@@ -9,6 +9,7 @@ import MailReading from '@/components/MailReading.vue'
 import ComposePopup from '@/components/ComposePopup.vue'
 import ComposePage from '@/components/ComposePage.vue'
 import AdminPanel from '@/components/AdminPanel.vue'
+import SettingsPanel from '@/components/SettingsPanel.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -32,6 +33,9 @@ const draft = reactive({
 
 const adminSections = computed(() => allowedSections(auth.user))
 const isAdmin = computed(() => route.name === 'admin')
+const isSettings = computed(() => route.name === 'settings')
+/* 管理 / 设置都占「中栏 + 右栏」，左侧导航保持常驻 */
+const isPanel = computed(() => isAdmin.value || isSettings.value)
 const adminSection = computed(() => String(route.params.section || ''))
 function goAdmin(key) {
   router.push(/admin/)
@@ -55,7 +59,7 @@ const emptyText = computed(() => {
 function pickAccount(id) {
   if (id !== accountId.value) accountId.value = id
   // 在管理面板里点账户 = 想回去看邮件
-  if (isAdmin.value) {
+  if (isPanel.value) {
     router.push('/')
     return
   }
@@ -75,7 +79,7 @@ function pickFolder(key) {
     filter.value = 'all'
   }
   // 在管理面板里点文件夹 = 想回去看邮件（watch(isAdmin) 会负责重新拉取）
-  if (isAdmin.value) {
+  if (isPanel.value) {
     router.push('/')
     return
   }
@@ -89,8 +93,8 @@ onMounted(() => {
 })
 
 /* 从管理面板回到邮件区时再拉一次 + 恢复轮询 */
-watch(isAdmin, (admin) => {
-  if (admin) {
+watch(isPanel, (panel) => {
+  if (panel) {
     inbox.stopPolling()
     return
   }
@@ -171,7 +175,7 @@ async function doLogout() {
 
 <template>
   <main class="screen screen--app">
-    <div class="workspace" :data-view="mobileView" :data-mode="isAdmin ? 'admin' : 'mail'">
+    <div class="workspace" :data-view="mobileView" :data-mode="isAdmin ? 'admin' : isSettings ? 'settings' : 'mail'">
       <!-- 左栏 -->
       <aside class="pane pane--aside panel panel--tight">
         <p class="side-group">账户</p>
@@ -193,7 +197,7 @@ async function doLogout() {
           :key="item.key"
           class="side-item"
           href="#"
-          :aria-current="!isAdmin && inbox.folder === item.key ? 'true' : undefined"
+          :aria-current="!isPanel && inbox.folder === item.key ? 'true' : undefined"
           @click.prevent="pickFolder(item.key)"
         >
           {{ item.label }}
@@ -210,15 +214,16 @@ async function doLogout() {
           >{{ item.label }}</router-link>
         </template>
 
-        <p class="side-group">其他</p>
-        <router-link class="side-item" to="/settings">设置</router-link>
+        <div class="side-bottom">
+          <router-link class="side-item" to="/settings">设置</router-link>
 
-        <p class="side-group">账户信息</p>
-        <p class="meta" style="margin: 0 12px; line-height: 1.9">
+          <p class="side-group">账户信息</p>
+          <p class="meta" style="margin: 0 12px; line-height: 1.9">
           {{ auth.user?.email || '—' }}<br />
           {{ auth.user?.name || '' }}
-          <span v-if="auth.user?.permKeys?.includes('*')"> · 管理员</span>
-        </p>
+            <span v-if="auth.user?.permKeys?.includes('*')"> · 管理员</span>
+          </p>
+        </div>
 
         <div class="side-foot">
           <button class="btn btn--primary side-compose" type="button" @click="openCompose()">写 信</button>
@@ -235,8 +240,10 @@ async function doLogout() {
         @go="goAdmin"
       />
 
+      <SettingsPanel v-else-if="isSettings" />
+
       <!-- 中栏 -->
-      <section v-if="!isAdmin" class="pane pane--list panel" aria-label="邮件列表">
+      <section v-if="!isPanel" class="pane pane--list panel" aria-label="邮件列表">
         <div class="toolbar">
           <button class="btn btn--ghost btn--slim" type="button" @click="backToList">‹ 列表</button>
           <span class="meta" style="margin-left: auto">{{ FOLDERS.find((f) => f.key === inbox.folder)?.label }}</span>
@@ -271,7 +278,7 @@ async function doLogout() {
       </section>
 
       <!-- 右栏 -->
-      <section v-if="!isAdmin" class="pane pane--reading panel" :class="{ 'is-open': !!selected }">
+      <section v-if="!isPanel" class="pane pane--reading panel" :class="{ 'is-open': !!selected }">
         <MailReading
           v-if="selected"
           :mail="selected"

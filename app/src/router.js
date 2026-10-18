@@ -9,7 +9,7 @@ const routes = [
     component: () => import('@/views/InboxView.vue'),
     meta: { admin: true }
   },
-  { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
+  { path: '/settings', name: 'settings', component: () => import('@/views/InboxView.vue') },
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 

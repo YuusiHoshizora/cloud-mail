@@ -487,8 +487,10 @@ body {
 }
 
 /* 管理面板直接铺在中栏+右栏的位置，左侧账户/文件夹/管理导航保持常驻 */
-.workspace[data-mode="admin"] { grid-template-columns: var(--mail-aside-w) minmax(0, 1fr); }
-.pane--admin {
+.workspace[data-mode="admin"],
+.workspace[data-mode="settings"] { grid-template-columns: var(--mail-aside-w) minmax(0, 1fr); }
+.pane--admin,
+.pane--panel {
   grid-column: 2 / -1;
   padding: 20px 24px 26px;
   overflow-y: auto;
@@ -497,3 +499,8 @@ body {
 .pane--admin .admin-head { margin-bottom: 18px; }
 
 .pane--admin .admin-title { margin: 0; }
+
+/* 左栏底部：设置 → 账户信息 → 写信/退出，整块贴到底 */
+.side-bottom { margin-top: auto; }
+.side-bottom .side-group:first-child { margin-top: 12px; }
+.side-bottom + .side-foot { margin-top: 0; }
