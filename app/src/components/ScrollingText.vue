@@ -9,7 +9,9 @@ import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 const props = defineProps({
   text: { type: String, default: '' },
   /** 每字符停留时长（秒），整体速度约 30 像素/秒左右 */
-  speed: { type: Number, default: 0.35 }
+  speed: { type: Number, default: 0.35 },
+  /** 悬停提示；默认用文本本身，可传完整邮箱等更长的信息 */
+  title: { type: String, default: '' }
 })
 
 const wrap = ref(null)
@@ -41,7 +43,7 @@ watch(
 </script>
 
 <template>
-  <span ref="wrap" class="scroll-text" :class="{ 'is-overflow': overflow }" :title="text">
+  <span ref="wrap" class="scroll-text" :class="{ 'is-overflow': overflow }" :title="title || text">
     <span class="scroll-text__track" :style="{ animationDuration: `${duration}s` }">
       <span class="scroll-text__item">{{ text }}</span>
       <span v-if="overflow" class="scroll-text__item" aria-hidden="true">{{ text }}</span>

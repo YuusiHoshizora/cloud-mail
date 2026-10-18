@@ -52,3 +52,10 @@ export function recipientLine(mail) {
   const to = formatRecipients(mail?.toEmail)
   return to || ''
 }
+
+/** 邮箱的 @ 前部分：侧栏只显示这个，完整地址放 title 里 */
+export function localPart(email) {
+  const text = String(email || '')
+  const at = text.indexOf('@')
+  return at > 0 ? text.slice(0, at) : text
+}

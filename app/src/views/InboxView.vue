@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { FOLDERS, useInboxStore } from '@/stores/inbox'
 import { allowedSections } from '@/lib/perm'
+import { localPart } from '@/lib/mail'
 import { deleteDraft, draftToRow, listDrafts, newDraftId, putDraft } from '@/lib/drafts'
 import MailRow from '@/components/MailRow.vue'
 import MailReading from '@/components/MailReading.vue'
@@ -37,6 +38,13 @@ const draft = reactive({
 })
 
 const adminSections = computed(() => allowedSections(auth.user))
+
+/* 名字和邮箱前缀一样时没必要重复显示 */
+const displayName = computed(() => {
+  const name = String(auth.user?.name || '').trim()
+  if (!name) return ''
+  return name.toLowerCase() === localPart(auth.user?.email).toLowerCase() ? '' : name
+})
 const isAdmin = computed(() => route.name === 'admin')
 const isSettings = computed(() => route.name === 'settings')
 /* 管理 / 设置都占「中栏 + 右栏」，左侧导航保持常驻 */
@@ -280,7 +288,7 @@ async function doLogout() {
           @click.prevent="pickAccount(acc.accountId)"
         >
           <span class="dot" :class="{ 'dot--off': acc.accountId !== accountId }"></span>
-          <ScrollingText :text="acc.email" />
+          <ScrollingText :text="localPart(acc.email)" :title="acc.email" />
         </a>
 
         <p class="side-group">文件夹</p>
@@ -311,10 +319,10 @@ async function doLogout() {
 
           <p class="side-group">账户信息</p>
           <p class="meta" style="margin: 0 12px; line-height: 1.9">
-            <ScrollingText :text="auth.user?.email || '—'" />
+            <span :title="auth.user?.email || ''">{{ localPart(auth.user?.email) || '—' }}</span>
             <span class="account-extra">
-              <ScrollingText :text="auth.user?.name || ''" />
-              <span v-if="auth.user?.permKeys?.includes('*')"> · 管理员</span>
+              <span v-if="displayName">{{ displayName }}</span>
+              <span v-if="auth.user?.permKeys?.includes('*')" class="account-role"> · 管理员</span>
             </span>
           </p>
         </div>
