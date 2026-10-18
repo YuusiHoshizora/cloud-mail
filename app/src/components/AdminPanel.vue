@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { api } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { allowedSections, toList, toTotal } from '@/lib/perm'
-import { formatDateTime } from '@/lib/url'
+import { cvtR2Url, formatDateTime } from '@/lib/url'
 
 const props = defineProps({ section: { type: String, default: '' } })
 
@@ -445,18 +445,107 @@ function bars(source) {
 }
 
 /* ------------------------------------------------------------ 系统设置 */
-const settings = reactive({ form: null, patch: {} })
+const settings = reactive({ form: null, patch: {}, backgroundPreview: '' })
+const bgBusy = ref(false)
+const bgSrc = computed(() => cvtR2Url(settings.form?.background))
+const bgFileEl = ref(null)
+
+/* 开关语义（后端 entity-const）：0 = 开，1 = 关 */
+const VERIFY_OPTIONS = [
+  { value: 0, label: '总是需要人机验证' },
+  { value: 1, label: '不验证' },
+  { value: 2, label: '达到次数后才验证' }
+]
+
+const SETTING_GROUPS = [
+  {
+    title: '站点信息',
+    fields: [
+      { key: 'title', label: '站点标题', type: 'text' },
+      { key: 'minEmailPrefix', label: '邮箱前缀最小长度', type: 'number' },
+      { key: 'loginOpacity', label: '登录页卡片透明度', type: 'number', step: '0.01' },
+      { key: 'loginDomain', label: '登录页选择域名', type: 'switch' },
+      { key: 'autoRefresh', label: '收件自动刷新', type: 'switch' },
+      { key: 'noRecipient', label: '允许发往不存在的收件人', type: 'switch' }
+    ]
+  },
+  {
+    title: '注册与发信',
+    fields: [
+      { key: 'register', label: '开放注册', type: 'switch' },
+      { key: 'regKey', label: '邀请码模式', type: 'select', options: [
+        { value: 0, label: '必须邀请码' },
+        { value: 1, label: '关闭邀请码' },
+        { value: 2, label: '邀请码可选' }
+      ] },
+      { key: 'addEmail', label: '允许添加邮箱', type: 'switch' },
+      { key: 'manyEmail', label: '允许多邮箱', type: 'switch' },
+      { key: 'send', label: '允许发信', type: 'switch' },
+      { key: 'receive', label: '允许收信', type: 'switch' },
+      { key: 'registerVerify', label: '注册人机验证', type: 'select', options: VERIFY_OPTIONS },
+      { key: 'addEmailVerify', label: '添加邮箱人机验证', type: 'select', options: VERIFY_OPTIONS },
+      { key: 'regVerifyCount', label: '注册验证触发次数', type: 'number' },
+      { key: 'addVerifyCount', label: '添加邮箱验证触发次数', type: 'number' },
+      { key: 'siteKey', label: 'Turnstile 站点密钥', type: 'secret' },
+      { key: 'secretKey', label: 'Turnstile 私钥', type: 'secret' }
+    ]
+  },
+  {
+    title: '公告',
+    fields: [
+      { key: 'notice', label: '显示公告', type: 'switch' },
+      { key: 'noticeTitle', label: '公告标题', type: 'text' },
+      { key: 'noticeContent', label: '公告内容（支持 HTML）', type: 'textarea' },
+      { key: 'noticeType', label: '公告类型', type: 'text' },
+      { key: 'noticeDuration', label: '停留时长（秒）', type: 'number' },
+      { key: 'noticePosition', label: '位置', type: 'text' },
+      { key: 'noticeWidth', label: '宽度', type: 'number' },
+      { key: 'noticeOffset', label: '偏移', type: 'number' }
+    ]
+  },
+  {
+    title: '存储与附件',
+    fields: [
+      { key: 'r2Domain', label: 'R2 自定义域（留空走同源）', type: 'text' },
+      { key: 'bucket', label: 'S3 桶名', type: 'text' },
+      { key: 'region', label: 'S3 区域', type: 'text' },
+      { key: 'endpoint', label: 'S3 Endpoint', type: 'text' },
+      { key: 'customDomain', label: 'S3 自定义域', type: 'text' },
+      { key: 's3AccessKey', label: 'S3 AccessKey', type: 'secret' },
+      { key: 's3SecretKey', label: 'S3 SecretKey', type: 'secret' },
+      { key: 'forcePathStyle', label: '强制 Path-Style', type: 'switch' }
+    ]
+  },
+  {
+    title: '转发与通知',
+    fields: [
+      { key: 'forwardEmail', label: '转发目标邮箱', type: 'text' },
+      { key: 'forwardStatus', label: '开启转发', type: 'switch' },
+      { key: 'ruleEmail', label: '规则匹配地址', type: 'text' },
+      { key: 'ruleType', label: '规则类型（0 全部 / 1 规则）', type: 'number' },
+      { key: 'tgChatId', label: 'Telegram Chat ID', type: 'text' },
+      { key: 'tgBotToken', label: 'Telegram Bot Token', type: 'secret' },
+      { key: 'tgBotStatus', label: '开启 Telegram 通知', type: 'switch' }
+    ]
+  }
+]
 
 async function loadSettings() {
   busy.value = true
   try {
     settings.form = await api.settingQuery()
     settings.patch = {}
+    settings.backgroundPreview = ''
   } catch (err) {
     fail(err)
   } finally {
     busy.value = false
   }
+}
+
+function fieldValue(field) {
+  if (field.type === 'secret') return ''
+  return settings.form?.[field.key] ?? ''
 }
 
 function setField(key, value) {
@@ -465,8 +554,51 @@ function setField(key, value) {
 }
 
 function toggleSwitch(key) {
-  const current = Number(settings.form?.[key] ?? 0)
+  const current = Number(settings.form?.[key] ?? 1)
   setField(key, current === 0 ? 1 : 0)
+}
+
+function isSwitchOn(key) {
+  return Number(settings.form?.[key] ?? 0) === 0
+}
+
+async function onBackgroundFile(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (file.size > 4 * 1024 * 1024) {
+    error.value = '背景图建议小于 4 MB'
+    return
+  }
+  bgBusy.value = true
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+    await api.settingSetBackground(dataUrl)
+    await loadSettings()
+    note('背景图已更新')
+  } catch (err) {
+    fail(err)
+  } finally {
+    bgBusy.value = false
+  }
+}
+
+async function removeBackground() {
+  bgBusy.value = true
+  try {
+    await api.settingDeleteBackground()
+    await loadSettings()
+    note('背景图已删除')
+  } catch (err) {
+    fail(err)
+  } finally {
+    bgBusy.value = false
+  }
 }
 
 async function saveSettings() {
@@ -478,7 +610,6 @@ async function saveSettings() {
   try {
     await api.settingSet(settings.patch)
     note(`已保存 ${Object.keys(settings.patch).length} 个字段`)
-    settings.patch = {}
     await loadSettings()
   } catch (err) {
     fail(err)
@@ -759,40 +890,102 @@ watch(active, () => {
     </template>
 
     <!-- 系统设置 -->
+        <!-- 系统设置 -->
     <template v-else-if="active === 'setting'">
-      <p class="meta" style="margin: 0 0 16px">只提交改动过的字段（后端为局部更新）；密钥类字段不在此修改。</p>
-      <div class="form-grid">
-        <div class="field">
-          <label class="field__label">站点标题</label>
-          <input class="input" :value="settings.form?.title" @change="setField('title', $event.target.value)" />
-        </div>
-        <div class="field">
-          <label class="field__label">邮箱前缀最小长度</label>
-          <input class="input" type="number" min="1" :value="settings.form?.minEmailPrefix" @change="setField('minEmailPrefix', Number($event.target.value))" />
-        </div>
-        <div class="field">
-          <label class="field__label">邮件域（逗号分隔）</label>
-          <input class="input" :value="settings.form?.domainList" @change="setField('domainList', $event.target.value)" />
-        </div>
-        <div class="field">
-          <label class="field__label">公告标题</label>
-          <input class="input" :value="settings.form?.noticeTitle" @change="setField('noticeTitle', $event.target.value)" />
+      <p class="meta" style="margin: 0 0 16px">
+        只提交改动过的字段（后端为局部更新）。密钥类字段显示脱敏值，留空表示不修改。
+      </p>
+
+      <div v-for="group in SETTING_GROUPS" :key="group.title" class="setting-group">
+        <h3 class="settings-subtitle">{{ group.title }}</h3>
+        <div class="form-grid">
+          <div
+            v-for="field in group.fields"
+            :key="field.key"
+            class="field"
+            :class="{ 'field--wide': field.type === 'textarea' }"
+          >
+            <label class="field__label">{{ field.label }}</label>
+
+            <button
+              v-if="field.type === 'switch'"
+              class="switch"
+              type="button"
+              role="switch"
+              :aria-checked="isSwitchOn(field.key)"
+              @click="toggleSwitch(field.key)"
+            ></button>
+
+            <select
+              v-else-if="field.type === 'select'"
+              class="input"
+              :value="Number(settings.form?.[field.key] ?? 0)"
+              @change="setField(field.key, Number($event.target.value))"
+            >
+              <option v-for="opt in field.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+
+            <textarea
+              v-else-if="field.type === 'textarea'"
+              class="input textarea"
+              rows="4"
+              :value="settings.form?.[field.key] ?? ''"
+              @change="setField(field.key, $event.target.value)"
+            ></textarea>
+
+            <input
+              v-else-if="field.type === 'secret'"
+              class="input"
+              type="text"
+              autocomplete="new-password"
+              placeholder="已配置则显示脱敏值，留空表示不修改"
+              @change="setField(field.key, $event.target.value)"
+            />
+
+            <input
+              v-else
+              class="input"
+              :type="field.type === 'number' ? 'number' : 'text'"
+              :step="field.step"
+              :value="fieldValue(field)"
+              @change="setField(field.key, field.type === 'number' ? Number($event.target.value) : $event.target.value)"
+            />
+          </div>
         </div>
       </div>
-      <div class="setting-list">
-        <div class="setting-row"><div><p class="setting-row__name">开放注册</p><p class="meta">关闭后只能靠邀请码或管理员添加</p></div>
-          <button class="switch" type="button" role="switch" :aria-checked="Number(settings.form?.register ?? 1) === 0" @click="toggleSwitch('register')"></button></div>
-        <div class="setting-row"><div><p class="setting-row__name">允许收信</p></div>
-          <button class="switch" type="button" role="switch" :aria-checked="Number(settings.form?.receive ?? 1) === 0" @click="toggleSwitch('receive')"></button></div>
-        <div class="setting-row"><div><p class="setting-row__name">允许发信</p></div>
-          <button class="switch" type="button" role="switch" :aria-checked="Number(settings.form?.send ?? 1) === 0" @click="toggleSwitch('send')"></button></div>
-        <div class="setting-row"><div><p class="setting-row__name">允许添加邮箱</p></div>
-          <button class="switch" type="button" role="switch" :aria-checked="Number(settings.form?.addEmail ?? 1) === 0" @click="toggleSwitch('addEmail')"></button></div>
-        <div class="setting-row"><div><p class="setting-row__name">允许多邮箱</p></div>
-          <button class="switch" type="button" role="switch" :aria-checked="Number(settings.form?.manyEmail ?? 1) === 0" @click="toggleSwitch('manyEmail')"></button></div>
-        <div class="setting-row"><div><p class="setting-row__name">显示公告</p></div>
-          <button class="switch" type="button" role="switch" :aria-checked="Number(settings.form?.notice ?? 1) === 0" @click="toggleSwitch('notice')"></button></div>
+
+      <div class="setting-group">
+        <h3 class="settings-subtitle">登录页背景</h3>
+        <div class="bg-row">
+          <div v-if="settings.form?.background" class="bg-thumb">
+            <img :src="settings.backgroundPreview || bgSrc" alt="当前背景" />
+          </div>
+          <div class="bg-actions">
+            <button class="btn btn--slim" type="button" :disabled="bgBusy" @click="bgFileEl?.click()">
+              {{ bgBusy ? '处理中…' : (settings.form?.background ? '更换背景图' : '上传背景图') }}
+            </button>
+            <button
+              v-if="settings.form?.background"
+              class="btn btn--slim btn--danger"
+              type="button"
+              :disabled="bgBusy"
+              @click="removeBackground"
+            >删除背景</button>
+            <input ref="bgFileEl" type="file" accept="image/*" hidden @change="onBackgroundFile" />
+            <p class="meta" style="margin: 8px 0 0">建议 4 MB 以内；上传后走 R2 存储，删除时会一并清理对象</p>
+          </div>
+        </div>
       </div>
+
+      <div class="setting-row" style="margin-top: 8px">
+        <div>
+          <p class="setting-row__name">邮件域（只读）</p>
+          <p class="meta">
+            来自 Worker 变量 <code>domain</code>：{{ (settings.form?.domainList || []).join('　') || '—' }}
+          </p>
+        </div>
+      </div>
+
       <div class="admin-tools" style="margin-top: 20px">
         <button class="btn btn--enter" type="button" :disabled="busy" @click="saveSettings">保 存 改 动</button>
         <span class="meta">{{ Object.keys(settings.patch).length }} 个字段待保存</span>

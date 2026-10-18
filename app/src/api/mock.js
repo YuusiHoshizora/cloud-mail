@@ -197,11 +197,21 @@ export const settingQuery = async () => {
   await wait(100)
   return {
     title: '星光圣域 · 邮箱', register: 0, receive: 0, send: 0, addEmail: 0, manyEmail: 0,
-    regKey: 0, minEmailPrefix: 1, domainList: '@stsas.top', notice: 0,
-    noticeTitle: '通知', noticeContent: '', noticeType: 'none', loginOpacity: 0.9
+    regKey: 0, minEmailPrefix: 1, domainList: ['@stsas.top'], notice: 0,
+    noticeTitle: '通知', noticeContent: '<p>这是一条站点公告</p>', noticeType: 'info',
+    noticeDuration: 0, noticePosition: 'top-right', noticeWidth: 340, noticeOffset: 0,
+    loginOpacity: 0.9, loginDomain: 0, autoRefresh: 0, noRecipient: 1,
+    registerVerify: 1, addEmailVerify: 1, regVerifyCount: 1, addVerifyCount: 1,
+    siteKey: null, secretKey: null, r2Domain: null, background: null,
+    bucket: '', region: '', endpoint: '', customDomain: '',
+    s3AccessKey: null, s3SecretKey: null, forcePathStyle: 1,
+    forwardEmail: '', forwardStatus: 1, ruleEmail: '', ruleType: 0,
+    tgChatId: '', tgBotToken: null, tgBotStatus: 1
   }
 }
 export const settingSet = async () => { await wait(120) }
+export const settingSetBackground = async () => { await wait(200) }
+export const settingDeleteBackground = async () => { await wait(120) }
 
 /* ---------------------------------------------------------------- 管理端（演示桩） */
 const MOCK_USERS = [

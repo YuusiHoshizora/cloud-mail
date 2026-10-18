@@ -53,6 +53,10 @@ export const resetPassword = (password) =>
 
 export const settingQuery = () => request('/setting/query')
 export const settingSet = (setting) => request('/setting/set', { method: 'PUT', body: setting })
+export const settingSetBackground = (background) =>
+  request('/setting/setBackground', { method: 'PUT', body: { background } })
+export const settingDeleteBackground = () =>
+  request('/setting/deleteBackground', { method: 'DELETE' })
 
 /* ---------------------------------------------------------------- 管理端 */
 export const userList = (params) => request('/user/list', { params })

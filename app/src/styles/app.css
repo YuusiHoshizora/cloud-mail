@@ -587,3 +587,23 @@ body {
 .perm-children { margin: 6px 0 0 20px; display: flex; flex-direction: column; }
 .perm-item .meta { margin-left: auto; font-size: 11px; letter-spacing: 0; opacity: 0.6; }
 select.input { appearance: none; cursor: pointer; }
+
+/* 系统设置分组与背景图 */
+.setting-group { margin-bottom: 26px; }
+.setting-group .settings-subtitle { margin-bottom: 12px; }
+.field--wide { grid-column: 1 / -1; }
+.textarea { min-height: 96px; resize: vertical; font-family: var(--mail-font-body); line-height: 1.8; }
+.bg-row { display: flex; gap: 16px; align-items: flex-start; }
+.bg-thumb {
+  width: 180px;
+  height: 100px;
+  border: 1px solid var(--ctl-border);
+  border-radius: var(--ctl-radius);
+  overflow: hidden;
+  background: var(--ctl-bg);
+  flex: 0 0 auto;
+}
+.bg-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bg-actions { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.bg-actions .meta { flex-basis: 100%; }
+code { font-family: var(--mail-font-mono); font-size: 12px; color: var(--ctl-fg-hover); }
