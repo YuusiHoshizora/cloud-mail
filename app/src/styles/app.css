@@ -504,3 +504,13 @@ body {
 .side-bottom { margin-top: auto; }
 .side-bottom .side-group:first-child { margin-top: 12px; }
 .side-bottom + .side-foot { margin-top: 0; }
+
+/* 设置页：表格内的行内输入 */
+.input--inline { min-height: 30px; padding: 4px 8px; font-size: 13px; max-width: 140px; }
+.settings-subtitle {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  color: var(--mail-fg-sub);
+}

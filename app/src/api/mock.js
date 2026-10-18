@@ -283,3 +283,29 @@ export const analysisEcharts = async () => {
     emailDayCount: { receiveDayCount: days(12), sendDayCount: days(4) }
   }
 }
+
+/* 账户操作（演示桩） */
+export const accountAdd = async (email) => {
+  await wait(180)
+  const created = { accountId: acc().length + 10, userId: 1, email, name: '', status: 0, allReceive: 0, sort: 0, isDel: 0, createTime: day(0, '12:00'), latestEmailTime: null }
+  acc().push(created)
+  return created
+}
+export const accountSetName = async (accountId, name) => {
+  await wait(80)
+  const row = acc().find((a) => a.accountId === accountId)
+  if (row) row.name = name
+}
+export const accountDelete = async (accountId) => {
+  await wait(100)
+  accounts = acc().filter((a) => a.accountId !== accountId)
+}
+export const accountSetAllReceive = async (accountId) => {
+  await wait(80)
+  acc().forEach((a) => { a.allReceive = a.accountId === accountId ? (a.allReceive ? 0 : 1) : 0 })
+}
+export const accountSetAsTop = async (accountId) => {
+  await wait(80)
+  acc().forEach((a) => { a.sort = a.accountId === accountId ? 1 : 0 })
+}
+export const userDeleteSelf = async () => { await wait(150) }

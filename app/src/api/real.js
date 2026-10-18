@@ -11,6 +11,18 @@ export const logout = () => request('/logout', { method: 'DELETE' })
 
 export const loginUserInfo = () => request('/my/loginUserInfo')
 
+export const accountAdd = (email, token) =>
+  request('/account/add', { method: 'POST', body: { email, token } })
+export const accountSetName = (accountId, name) =>
+  request('/account/setName', { method: 'PUT', body: { accountId, name } })
+export const accountDelete = (accountId) =>
+  request('/account/delete', { method: 'DELETE', params: { accountId } })
+export const accountSetAllReceive = (accountId) =>
+  request('/account/setAllReceive', { method: 'PUT', body: { accountId } })
+export const accountSetAsTop = (accountId) =>
+  request('/account/setAsTop', { method: 'PUT', body: { accountId } })
+
+export const userDeleteSelf = () => request('/my/delete', { method: 'DELETE' })
 export const websiteConfig = () => request('/setting/websiteConfig')
 
 export const accountList = (params = {}) => request('/account/list', { params })
