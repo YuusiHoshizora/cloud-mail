@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { recipientLine } from '@/lib/mail'
 
 const props = defineProps({
   mail: { type: Object, required: true },
@@ -9,9 +10,10 @@ defineEmits(['select'])
 
 const from = computed(() => {
   const mail = props.mail
-  // 已发送里「发件人」其实是我们自己，看的人关心的是收件人
-  if (mail.type === 1) return mail.toEmail || mail.recipient || '（无收件人）'
-  return mail.name || mail.sendEmail || mail.toEmail || '未知发件人'
+  // 已发送里「发件人」是我们自己，看的人关心的是收件人；
+  // recipient 是 [{address,name}] 的 JSON 串，必须解析，不能直接显示
+  if (mail.type === 1) return recipientLine(mail) || '（无收件人）'
+  return mail.name || mail.sendEmail || recipientLine(mail) || '未知发件人'
 })
 
 const preview = computed(() => {

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { FOLDERS, useInboxStore } from '@/stores/inbox'
 import { allowedSections } from '@/lib/perm'
@@ -8,8 +8,10 @@ import MailRow from '@/components/MailRow.vue'
 import MailReading from '@/components/MailReading.vue'
 import ComposePopup from '@/components/ComposePopup.vue'
 import ComposePage from '@/components/ComposePage.vue'
+import AdminPanel from '@/components/AdminPanel.vue'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const inbox = useInboxStore()
 
@@ -29,6 +31,11 @@ const draft = reactive({
 })
 
 const adminSections = computed(() => allowedSections(auth.user))
+const isAdmin = computed(() => route.name === 'admin')
+const adminSection = computed(() => String(route.params.section || ''))
+function goAdmin(key) {
+  router.push(/admin/)
+}
 const selected = computed(() => inbox.selected)
 
 const visibleItems = computed(() => {
@@ -68,8 +75,17 @@ function pickFolder(key) {
 
 onMounted(() => {
   if (!accountId.value && auth.accounts.length) accountId.value = auth.accounts[0].accountId
+  if (isAdmin.value) return
   refresh()
-  inbox.startPolling(accountId.value, allReceive.value)
+})
+
+/* 从管理面板回到邮件区时再拉一次 + 恢复轮询 */
+watch(isAdmin, (admin) => {
+  if (admin) {
+    inbox.stopPolling()
+    return
+  }
+  refresh()
 })
 
 onUnmounted(() => inbox.stopPolling())
@@ -146,7 +162,7 @@ async function doLogout() {
 
 <template>
   <main class="screen screen--app">
-    <div class="workspace" :data-view="mobileView">
+    <div class="workspace" :data-view="mobileView" :data-mode="isAdmin ? 'admin' : 'mail'">
       <!-- 左栏 -->
       <aside class="pane pane--aside panel panel--tight">
         <p class="side-group">账户</p>
@@ -168,7 +184,7 @@ async function doLogout() {
           :key="item.key"
           class="side-item"
           href="#"
-          :aria-current="inbox.folder === item.key ? 'true' : undefined"
+          :aria-current="!isAdmin && inbox.folder === item.key ? 'true' : undefined"
           @click.prevent="pickFolder(item.key)"
         >
           {{ item.label }}
@@ -203,8 +219,15 @@ async function doLogout() {
         </div>
       </aside>
 
+      <!-- 管理面板：占中栏+右栏，左侧导航不消失 -->
+      <AdminPanel
+        v-if="isAdmin"
+        :section="adminSection"
+        @go="goAdmin"
+      />
+
       <!-- 中栏 -->
-      <section class="pane pane--list panel" aria-label="邮件列表">
+      <section v-if="!isAdmin" class="pane pane--list panel" aria-label="邮件列表">
         <div class="toolbar">
           <button class="btn btn--ghost btn--slim" type="button" @click="backToList">‹ 列表</button>
           <span class="meta" style="margin-left: auto">{{ FOLDERS.find((f) => f.key === inbox.folder)?.label }}</span>
@@ -239,7 +262,7 @@ async function doLogout() {
       </section>
 
       <!-- 右栏 -->
-      <section class="pane pane--reading panel" :class="{ 'is-open': !!selected }">
+      <section v-if="!isAdmin" class="pane pane--reading panel" :class="{ 'is-open': !!selected }">
         <MailReading
           v-if="selected"
           :mail="selected"
