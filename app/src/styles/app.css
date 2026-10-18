@@ -607,3 +607,8 @@ select.input { appearance: none; cursor: pointer; }
 .bg-actions { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .bg-actions .meta { flex-basis: 100%; }
 code { font-family: var(--mail-font-mono); font-size: 12px; color: var(--ctl-fg-hover); }
+
+/* 邀请码：有效期输入与创建区对齐 */
+.invite-expire { display: inline-flex; align-items: center; gap: 8px; }
+.invite-expire .input { min-height: 34px; }
+input[type="datetime-local"].input { color-scheme: dark; }

@@ -9,6 +9,9 @@ export const login = (email, password) =>
 
 export const logout = () => request('/logout', { method: 'DELETE' })
 
+/** 注册：{ email, password, code(邀请码), token(Turnstile) } */
+export const register = (form) => request('/register', { method: 'POST', body: form })
+
 export const loginUserInfo = () => request('/my/loginUserInfo')
 
 export const accountAdd = (email, token) =>

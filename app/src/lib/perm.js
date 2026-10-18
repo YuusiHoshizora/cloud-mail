@@ -4,7 +4,7 @@ export const ADMIN_SECTIONS = [
   { key: 'users', label: '用户', perm: 'user:query' },
   { key: 'all-mail', label: '全站邮件', perm: 'all-email:query' },
   { key: 'invite', label: '邀请码', perm: 'reg-key:query' },
-  { key: 'roles', label: '角色', perm: 'role:query' },
+  { key: 'roles', label: '权限', perm: 'role:query' },
   { key: 'analysis', label: '统计', perm: 'analysis:query' },
   { key: 'setting', label: '系统设置', perm: 'setting:query' }
 ]

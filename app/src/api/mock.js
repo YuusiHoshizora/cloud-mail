@@ -124,6 +124,12 @@ function acc() {
 export const login = async (email) => { await wait(); return { token: 'mock-token' } }
 export const logout = async () => { await wait(60) }
 
+export const register = async (form) => {
+  await wait(300)
+  if (!form.code) throw new Error('请输入邀请码')
+  return { token: 'mock-token' }
+}
+
 export const loginUserInfo = async () => {
   await wait()
   return {

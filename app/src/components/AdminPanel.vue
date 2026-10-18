@@ -217,7 +217,23 @@ async function removeMail(row) {
 }
 
 /* ------------------------------------------------------------ 邀请码 */
-const invites = reactive({ list: [], code: '', count: 5, roleId: 0 })
+function defaultExpireLocal() {
+  const d = new Date()
+  d.setDate(d.getDate() + 30)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** datetime-local → 后端 formatDetailDate 能吃的 "YYYY-MM-DD HH:mm:ss" */
+function toSqlDateTime(localValue) {
+  if (!localValue) return ''
+  const d = new Date(localValue)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:00`
+}
+
+const invites = reactive({ list: [], code: '', count: 5, roleId: 0, expire: defaultExpireLocal() })
 
 async function loadInvites() {
   busy.value = true
@@ -246,10 +262,13 @@ async function addInvite() {
     await api.regKeyAdd({
       code: invites.code.trim(),
       roleId: Number(invites.roleId) || 0,
-      count: Number(invites.count) || 1
+      count: Number(invites.count) || 1,
+      /* 后端 regKey/add 里 expireTime 是必填，缺了抛 emptyRegKeyExpire */
+      expireTime: toSqlDateTime(invites.expire)
     })
     note('邀请码已创建')
     invites.code = ''
+    invites.expire = defaultExpireLocal()
     await loadInvites()
   } catch (err) {
     fail(err)
@@ -371,10 +390,10 @@ async function saveRole() {
   try {
     if (roleEditor.roleId) {
       await api.roleSet({ ...payload, roleId: roleEditor.roleId })
-      note('角色已更新')
+      note('权限已更新')
     } else {
       await api.roleAdd(payload)
-      note('角色已创建')
+      note('权限已创建')
     }
     roleEditor.open = false
     await loadRoles()
@@ -389,18 +408,18 @@ async function setDefaultRole(row) {
   try {
     await api.roleSetDefault(row.roleId)
     await loadRoles()
-    note(`默认角色已设为 ${row.name}`)
+    note(`默认权限已设为 ${row.name}`)
   } catch (err) {
     fail(err)
   }
 }
 
 async function removeRole(row) {
-  if (!window.confirm(`删除角色「${row.name}」？该角色下的用户会失去对应权限。`)) return
+  if (!window.confirm(`删除权限「${row.name}」？该权限组下的用户会失去对应能力。`)) return
   try {
     await api.roleDelete(row.roleId)
     await loadRoles()
-    note('角色已删除')
+    note('权限已删除')
   } catch (err) {
     fail(err)
   }
@@ -663,7 +682,7 @@ watch(active, () => {
       </div>
 
       <table class="table">
-        <thead><tr><th>邮箱</th><th>名称</th><th>角色</th><th>状态</th><th>已发送</th><th>注册时间</th><th></th></tr></thead>
+        <thead><tr><th>邮箱</th><th>名称</th><th>权限</th><th>状态</th><th>已发送</th><th>注册时间</th><th></th></tr></thead>
         <tbody>
           <tr v-for="row in users.list" :key="row.userId">
             <td>{{ row.email }}</td>
@@ -752,20 +771,25 @@ watch(active, () => {
         <input v-model="invites.code" class="input input--search" type="text" placeholder="邀请码，例如 STSAS-8F2C" />
         <button class="btn btn--slim" type="button" @click="randomCode">随机生成</button>
         <input v-model="invites.count" class="input input--search" type="number" min="1" style="max-width: 110px" placeholder="次数" />
+        <label class="invite-expire">
+          <span class="meta">有效期</span>
+          <input v-model="invites.expire" class="input input--search" type="datetime-local" style="max-width: 210px" />
+        </label>
         <button class="btn btn--slim btn--primary" type="button" @click="addInvite">创 建</button>
       </div>
       <table class="table">
-        <thead><tr><th>邀请码</th><th>角色</th><th>额度</th><th>已用</th><th>创建时间</th><th></th></tr></thead>
+        <thead><tr><th>邀请码</th><th>权限</th><th>额度</th><th>已用</th><th>有效期至</th><th>创建时间</th><th></th></tr></thead>
         <tbody>
           <tr v-for="row in invites.list" :key="row.regKeyId">
             <td>{{ row.code }}</td>
             <td>{{ row.roleName || row.roleId || '—' }}</td>
             <td>{{ row.count ?? '—' }}</td>
             <td>{{ row.usedCount ?? row.useCount ?? 0 }}</td>
+            <td class="meta">{{ row.expireTime ? row.expireTime.slice(0, 10) : '已过期' }}</td>
             <td class="meta">{{ formatDateTime(row.createTime) }}</td>
             <td class="actions"><button class="btn btn--xs btn--danger" type="button" @click="removeInvite(row)">删除</button></td>
           </tr>
-          <tr v-if="!invites.list.length"><td colspan="6" class="empty-hint">还没有邀请码</td></tr>
+          <tr v-if="!invites.list.length"><td colspan="7" class="empty-hint">还没有邀请码</td></tr>
         </tbody>
       </table>
     </template>
@@ -774,7 +798,7 @@ watch(active, () => {
         <!-- 角色 -->
     <template v-else-if="active === 'roles'">
       <div class="admin-tools">
-        <button class="btn btn--slim" type="button" @click="startCreateRole">新 建 角 色</button>
+        <button class="btn btn--slim" type="button" @click="startCreateRole">新 建 权 限</button>
         <span class="meta">权限点来自 /role/permTree，勾选后保存即生效</span>
       </div>
 
@@ -800,7 +824,7 @@ watch(active, () => {
 
       <div v-if="roleEditor.open" class="role-editor">
         <h3 class="settings-subtitle">
-          {{ roleEditor.roleId ? `编辑角色 · ${roleEditor.name}` : '新建角色' }}
+          {{ roleEditor.roleId ? `编辑权限 · ${roleEditor.name}` : '新建权限' }}
         </h3>
 
         <div class="form-grid">
@@ -856,7 +880,7 @@ watch(active, () => {
         </div>
 
         <div class="admin-tools" style="margin-top: 18px">
-          <button class="btn btn--enter" type="button" :disabled="busy" @click="saveRole">保 存 角 色</button>
+          <button class="btn btn--enter" type="button" :disabled="busy" @click="saveRole">保 存 权 限</button>
           <button class="btn btn--ghost btn--slim" type="button" @click="closeRoleEditor">取 消</button>
           <span class="meta">已选 {{ roleEditor.permIds.length }} 个权限点</span>
         </div>
