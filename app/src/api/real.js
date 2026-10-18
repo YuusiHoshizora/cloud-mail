@@ -76,6 +76,10 @@ export const regKeyDelete = (regKeyIds) =>
   request('/regKey/delete', { method: 'DELETE', params: { regKeyIds: regKeyIds.join(',') } })
 
 export const roleList = () => request('/role/list')
+export const roleAdd = (form) => request('/role/add', { method: 'POST', body: form })
+export const roleSet = (form) => request('/role/set', { method: 'PUT', body: form })
+export const roleDelete = (roleId) => request('/role/delete', { method: 'DELETE', params: { roleId } })
+export const roleSetDefault = (roleId) => request('/role/setDefault', { method: 'PUT', body: { roleId } })
 export const rolePermTree = () => request('/role/permTree')
 
 export const analysisEcharts = (timeZone) =>

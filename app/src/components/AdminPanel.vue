@@ -175,15 +175,140 @@ async function removeInvite(row) {
 
 /* ------------------------------------------------------------ 角色 */
 const roles = ref([])
+const permTree = ref([])
+
+const roleEditor = reactive({
+  open: false,
+  roleId: null,
+  name: '',
+  sendType: 'count',
+  sendCount: 0,
+  accountCount: 0,
+  banEmail: '',
+  availDomain: '',
+  permIds: []
+})
 
 async function loadRoles() {
   busy.value = true
   try {
-    roles.value = toList(await api.roleList())
+    const [list, tree] = await Promise.all([api.roleList(), api.rolePermTree()])
+    roles.value = toList(list)
+    permTree.value = toList(tree)
   } catch (err) {
     fail(err)
   } finally {
     busy.value = false
+  }
+}
+
+function startCreateRole() {
+  Object.assign(roleEditor, {
+    open: true,
+    roleId: null,
+    name: '',
+    sendType: 'count',
+    sendCount: 50,
+    accountCount: 2,
+    banEmail: '',
+    availDomain: '',
+    permIds: []
+  })
+}
+
+function startEditRole(row) {
+  Object.assign(roleEditor, {
+    open: true,
+    roleId: row.roleId,
+    name: row.name || '',
+    sendType: row.sendType || 'count',
+    sendCount: Number(row.sendCount ?? 0),
+    accountCount: Number(row.accountCount ?? 0),
+    banEmail: (row.banEmail || []).join(', '),
+    availDomain: (row.availDomain || []).join(', '),
+    permIds: [...(row.permIds || [])]
+  })
+}
+
+function closeRoleEditor() {
+  roleEditor.open = false
+}
+
+function hasPermId(permId) {
+  return roleEditor.permIds.includes(permId)
+}
+
+function togglePermId(permId) {
+  roleEditor.permIds = hasPermId(permId)
+    ? roleEditor.permIds.filter((id) => id !== permId)
+    : [...roleEditor.permIds, permId]
+}
+
+function toggleGroup(group) {
+  const ids = (group.children || []).map((child) => child.permId)
+  const allIn = ids.every((id) => roleEditor.permIds.includes(id))
+  roleEditor.permIds = allIn
+    ? roleEditor.permIds.filter((id) => !ids.includes(id))
+    : [...new Set([...roleEditor.permIds, ...ids])]
+}
+
+function splitEmails(text) {
+  return String(text || '')
+    .split(/[,，\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+async function saveRole() {
+  if (!roleEditor.name.trim()) {
+    error.value = '角色名称不能为空'
+    return
+  }
+  const payload = {
+    name: roleEditor.name.trim(),
+    sendType: roleEditor.sendType,
+    sendCount: Number(roleEditor.sendCount) || 0,
+    accountCount: Number(roleEditor.accountCount) || 0,
+    banEmail: splitEmails(roleEditor.banEmail),
+    availDomain: splitEmails(roleEditor.availDomain),
+    permIds: roleEditor.permIds
+  }
+  busy.value = true
+  try {
+    if (roleEditor.roleId) {
+      await api.roleSet({ ...payload, roleId: roleEditor.roleId })
+      note('角色已更新')
+    } else {
+      await api.roleAdd(payload)
+      note('角色已创建')
+    }
+    roleEditor.open = false
+    await loadRoles()
+  } catch (err) {
+    fail(err)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function setDefaultRole(row) {
+  try {
+    await api.roleSetDefault(row.roleId)
+    await loadRoles()
+    note(`默认角色已设为 ${row.name}`)
+  } catch (err) {
+    fail(err)
+  }
+}
+
+async function removeRole(row) {
+  if (!window.confirm(`删除角色「${row.name}」？该角色下的用户会失去对应权限。`)) return
+  try {
+    await api.roleDelete(row.roleId)
+    await loadRoles()
+    note('角色已删除')
+  } catch (err) {
+    fail(err)
   }
 }
 
@@ -378,20 +503,96 @@ watch(active, () => {
     </template>
 
     <!-- 角色 -->
+        <!-- 角色 -->
     <template v-else-if="active === 'roles'">
-      <p class="meta" style="margin: 0 0 14px">角色与权限点的编辑暂未接入，这里先做只读一览。</p>
+      <div class="admin-tools">
+        <button class="btn btn--slim" type="button" @click="startCreateRole">新 建 角 色</button>
+        <span class="meta">权限点来自 /role/permTree，勾选后保存即生效</span>
+      </div>
+
       <table class="table">
-        <thead><tr><th>ID</th><th>名称</th><th>默认</th><th>权限点</th></tr></thead>
+        <thead><tr><th>ID</th><th>名称</th><th>默认</th><th>发信</th><th>账户数</th><th>权限</th><th></th></tr></thead>
         <tbody>
           <tr v-for="row in roles" :key="row.roleId">
             <td>{{ row.roleId }}</td>
             <td>{{ row.name }}</td>
             <td>{{ row.isDefault ? '是' : '—' }}</td>
-            <td class="meta">{{ (row.permKeys || []).join('、') || '—' }}</td>
+            <td class="meta">{{ row.sendCount ?? '不限' }} · {{ row.sendType === 'day' ? '按日' : '按量' }}</td>
+            <td class="meta">{{ row.accountCount ?? '不限' }}</td>
+            <td class="meta">{{ (row.permIds || []).length }} 项</td>
+            <td class="actions">
+              <button class="btn btn--xs" type="button" @click="startEditRole(row)">编辑</button>
+              <button class="btn btn--xs" type="button" :disabled="!!row.isDefault" @click="setDefaultRole(row)">设默认</button>
+              <button class="btn btn--xs btn--danger" type="button" :disabled="!!row.isDefault" @click="removeRole(row)">删除</button>
+            </td>
           </tr>
-          <tr v-if="!roles.length"><td colspan="4" class="empty-hint">没有角色</td></tr>
+          <tr v-if="!roles.length"><td colspan="7" class="empty-hint">没有角色</td></tr>
         </tbody>
       </table>
+
+      <div v-if="roleEditor.open" class="role-editor">
+        <h3 class="settings-subtitle">
+          {{ roleEditor.roleId ? `编辑角色 · ${roleEditor.name}` : '新建角色' }}
+        </h3>
+
+        <div class="form-grid">
+          <div class="field">
+            <label class="field__label">名称</label>
+            <input v-model="roleEditor.name" class="input" type="text" placeholder="例如 普通用户" />
+          </div>
+          <div class="field">
+            <label class="field__label">发信规则</label>
+            <select v-model="roleEditor.sendType" class="input">
+              <option value="count">按量（总次数）</option>
+              <option value="day">按日（每天次数）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label">发信额度</label>
+            <input v-model="roleEditor.sendCount" class="input" type="number" min="0" />
+          </div>
+          <div class="field">
+            <label class="field__label">可绑定账户数</label>
+            <input v-model="roleEditor.accountCount" class="input" type="number" min="0" />
+          </div>
+          <div class="field">
+            <label class="field__label">禁止发信的地址 / 域</label>
+            <input v-model="roleEditor.banEmail" class="input" type="text" placeholder="逗号分隔，可用 *" />
+          </div>
+          <div class="field">
+            <label class="field__label">可用域（留空=不限）</label>
+            <input v-model="roleEditor.availDomain" class="input" type="text" placeholder="逗号分隔" />
+          </div>
+        </div>
+
+        <p class="field__label" style="margin: 4px 0 10px">权限点</p>
+        <div class="perm-tree">
+          <div v-for="group in permTree" :key="group.permId" class="perm-group">
+            <label class="perm-item perm-item--group">
+              <input
+                type="checkbox"
+                :checked="(group.children || []).length > 0 && group.children.every((child) => hasPermId(child.permId))"
+                @change="toggleGroup(group)"
+              />
+              <span>{{ group.name }}</span>
+            </label>
+            <div class="perm-children">
+              <label v-for="child in group.children || []" :key="child.permId" class="perm-item">
+                <input type="checkbox" :checked="hasPermId(child.permId)" @change="togglePermId(child.permId)" />
+                <span>{{ child.name }}</span>
+                <span class="meta">{{ child.permKey }}</span>
+              </label>
+            </div>
+          </div>
+          <p v-if="!permTree.length" class="meta">没有可分配的权限点</p>
+        </div>
+
+        <div class="admin-tools" style="margin-top: 18px">
+          <button class="btn btn--enter" type="button" :disabled="busy" @click="saveRole">保 存 角 色</button>
+          <button class="btn btn--ghost btn--slim" type="button" @click="closeRoleEditor">取 消</button>
+          <span class="meta">已选 {{ roleEditor.permIds.length }} 个权限点</span>
+        </div>
+      </div>
     </template>
 
     <!-- 统计 -->

@@ -254,14 +254,43 @@ export const regKeyDelete = async (ids) => {
   ids.forEach((id) => { const i = MOCK_REG_KEYS.findIndex((k) => k.regKeyId === id); if (i > -1) MOCK_REG_KEYS.splice(i, 1) })
 }
 
-export const roleList = async () => {
-  await wait(100)
-  return [
-    { roleId: 0, name: 'admin', isDefault: 1, permKeys: ['*'], sendCount: 0, accountCount: 0, sendType: 'count' },
-    { roleId: 1, name: '普通用户', isDefault: 0, permKeys: ['email:send', 'account:query'], sendCount: 50, accountCount: 2, sendType: 'day' }
-  ]
+const MOCK_PERM_TREE = [
+  { permId: 100, name: '邮件', permKey: 'email', pid: 0, children: [
+    { permId: 101, name: '发送邮件', permKey: 'email:send', pid: 100 },
+    { permId: 102, name: '删除邮件', permKey: 'email:delete', pid: 100 }
+  ] },
+  { permId: 200, name: '账户', permKey: 'account', pid: 0, children: [
+    { permId: 201, name: '查看账户', permKey: 'account:query', pid: 200 },
+    { permId: 202, name: '添加账户', permKey: 'account:add', pid: 200 },
+    { permId: 203, name: '删除账户', permKey: 'account:delete', pid: 200 }
+  ] }
+]
+
+const MOCK_ROLES = [
+  { roleId: 0, name: 'admin', isDefault: 1, sendCount: 0, accountCount: 0, sendType: 'count', banEmail: [], availDomain: [], permIds: [101, 102, 201, 202, 203] },
+  { roleId: 1, name: '普通用户', isDefault: 0, sendCount: 50, accountCount: 2, sendType: 'day', banEmail: [], availDomain: [], permIds: [101, 201] }
+]
+
+export const roleList = async () => { await wait(100); return MOCK_ROLES }
+export const rolePermTree = async () => { await wait(80); return MOCK_PERM_TREE }
+export const roleAdd = async (form) => {
+  await wait(120)
+  MOCK_ROLES.push({ roleId: MOCK_ROLES.length + 10, isDefault: 0, ...form })
 }
-export const rolePermTree = async () => { await wait(80); return [] }
+export const roleSet = async (form) => {
+  await wait(120)
+  const index = MOCK_ROLES.findIndex((r) => r.roleId === form.roleId)
+  if (index > -1) MOCK_ROLES[index] = { ...MOCK_ROLES[index], ...form }
+}
+export const roleDelete = async (roleId) => {
+  await wait(100)
+  const index = MOCK_ROLES.findIndex((r) => r.roleId === roleId)
+  if (index > -1) MOCK_ROLES.splice(index, 1)
+}
+export const roleSetDefault = async (roleId) => {
+  await wait(100)
+  MOCK_ROLES.forEach((r) => { r.isDefault = r.roleId === roleId ? 1 : 0 })
+}
 
 export const analysisEcharts = async () => {
   await wait(160)

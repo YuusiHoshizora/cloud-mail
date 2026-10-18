@@ -553,3 +553,37 @@ body {
   min-height: 42px;
   padding: 12px 8px 6px;
 }
+
+/* 角色编辑：权限树 */
+.role-editor {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.perm-tree { display: flex; flex-wrap: wrap; gap: 12px; }
+.perm-group {
+  flex: 1 1 260px;
+  padding: 12px 14px;
+  border: 1px solid var(--ctl-border);
+  border-radius: var(--ctl-radius);
+  background: var(--ctl-bg);
+}
+.perm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--mail-fg-sub);
+  cursor: pointer;
+}
+.perm-item--group { color: var(--ctl-fg); letter-spacing: 2px; }
+.perm-item input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  accent-color: #FFD700;
+  cursor: pointer;
+}
+.perm-children { margin: 6px 0 0 20px; display: flex; flex-direction: column; }
+.perm-item .meta { margin-left: auto; font-size: 11px; letter-spacing: 0; opacity: 0.6; }
+select.input { appearance: none; cursor: pointer; }
