@@ -2,8 +2,8 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useInboxStore } from '@/stores/inbox'
-import { TYPE } from '@/api'
+import { FOLDERS, useInboxStore } from '@/stores/inbox'
+import { allowedSections } from '@/lib/perm'
 import MailRow from '@/components/MailRow.vue'
 import MailReading from '@/components/MailReading.vue'
 import ComposePopup from '@/components/ComposePopup.vue'
@@ -28,6 +28,7 @@ const draft = reactive({
   mode: 'closed'
 })
 
+const adminSections = computed(() => allowedSections(auth.user))
 const selected = computed(() => inbox.selected)
 
 const visibleItems = computed(() => {
@@ -37,8 +38,12 @@ const visibleItems = computed(() => {
   return list
 })
 
-const unreadCount = computed(() => inbox.items.filter((m) => m.unread === 0).length)
 const allReceive = computed(() => Number(auth.currentAccount?.allReceive || 0))
+const emptyText = computed(() => {
+  if (inbox.folder === 'sent') return '还没有发出过邮件。'
+  if (inbox.folder === 'starred') return '还没有标记的邮件。'
+  return '收件箱是空的。'
+})
 
 function pickAccount(id) {
   accountId.value = id
@@ -46,13 +51,25 @@ function pickAccount(id) {
 
 async function refresh() {
   if (!accountId.value) return
-  await inbox.load(accountId.value, { allReceive: allReceive.value, type: TYPE.RECEIVE })
+  await inbox.load(accountId.value, { allReceive: allReceive.value })
+  // 每次刷新手都确认轮询参数是最新的（startPolling 内部对重复调用是幂等的）
   inbox.startPolling(accountId.value, allReceive.value)
+}
+
+function pickFolder(key) {
+  if (inbox.folder === key) {
+    refresh()
+    return
+  }
+  inbox.setFolder(key)
+  filter.value = 'all'
+  refresh()
 }
 
 onMounted(() => {
   if (!accountId.value && auth.accounts.length) accountId.value = auth.accounts[0].accountId
   refresh()
+  inbox.startPolling(accountId.value, allReceive.value)
 })
 
 onUnmounted(() => inbox.stopPolling())
@@ -82,21 +99,22 @@ function openCompose(preset = {}) {
 }
 
 function replyTo(mail) {
-  const quoted = mail.content
-    ? `<p><br></p><blockquote>${mail.content}</blockquote>`
-    : '<p><br></p>'
   openCompose({
     to: mail.sendEmail,
     subject: `Re: ${mail.subject || ''}`,
-    html: quoted,
+    html: mail.content ? `<p><br></p><blockquote>${mail.content}</blockquote>` : '<p><br></p>',
     sendType: 'reply',
     emailId: mail.emailId
   })
 }
 
 function forwardMail(mail) {
-  const quoted = mail.content ? `<p><br></p><blockquote>${mail.content}</blockquote>` : '<p><br></p>'
-  openCompose({ subject: `Fwd: ${mail.subject || ''}`, html: quoted, sendType: 'forward', emailId: mail.emailId })
+  openCompose({
+    subject: `Fwd: ${mail.subject || ''}`,
+    html: mail.content ? `<p><br></p><blockquote>${mail.content}</blockquote>` : '<p><br></p>',
+    sendType: 'forward',
+    emailId: mail.emailId
+  })
 }
 
 function onExpand(html) {
@@ -145,15 +163,36 @@ async function doLogout() {
         </a>
 
         <p class="side-group">文件夹</p>
-        <a class="side-item" href="#" aria-current="true">
-          收件箱 <span v-if="unreadCount" class="side-count">{{ unreadCount }}</span>
+        <a
+          v-for="item in FOLDERS"
+          :key="item.key"
+          class="side-item"
+          href="#"
+          :aria-current="inbox.folder === item.key ? 'true' : undefined"
+          @click.prevent="pickFolder(item.key)"
+        >
+          {{ item.label }}
+          <span v-if="item.key === 'inbox' && inbox.unreadCount" class="side-count">{{ inbox.unreadCount }}</span>
         </a>
+
+        <template v-if="adminSections.length">
+          <p class="side-group">管理</p>
+          <router-link
+            v-for="item in adminSections"
+            :key="item.key"
+            class="side-item"
+            :to="`/admin/${item.key}`"
+          >{{ item.label }}</router-link>
+        </template>
+
+        <p class="side-group">其他</p>
         <router-link class="side-item" to="/settings">设置</router-link>
 
         <p class="side-group">账户信息</p>
         <p class="meta" style="margin: 0 12px; line-height: 1.9">
           {{ auth.user?.email || '—' }}<br />
           {{ auth.user?.name || '' }}
+          <span v-if="auth.user?.permKeys?.includes('*')"> · 管理员</span>
         </p>
 
         <div class="side-foot">
@@ -168,6 +207,7 @@ async function doLogout() {
       <section class="pane pane--list panel" aria-label="邮件列表">
         <div class="toolbar">
           <button class="btn btn--ghost btn--slim" type="button" @click="backToList">‹ 列表</button>
+          <span class="meta" style="margin-left: auto">{{ FOLDERS.find((f) => f.key === inbox.folder)?.label }}</span>
           <button class="btn btn--icon" type="button" title="刷新" @click="refresh">↻</button>
         </div>
 
@@ -184,7 +224,7 @@ async function doLogout() {
 
           <p v-else-if="inbox.error" class="meta" style="padding: 24px 12px">{{ inbox.error }}</p>
 
-          <p v-else-if="!visibleItems.length" class="meta" style="padding: 28px 12px">这里还没有邮件。</p>
+          <p v-else-if="!visibleItems.length" class="empty-hint">{{ emptyText }}</p>
 
           <template v-else>
             <MailRow

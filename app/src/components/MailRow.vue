@@ -7,9 +7,12 @@ const props = defineProps({
 })
 defineEmits(['select'])
 
-const from = computed(
-  () => props.mail.name || props.mail.sendEmail || props.mail.toEmail || '未知发件人'
-)
+const from = computed(() => {
+  const mail = props.mail
+  // 已发送里「发件人」其实是我们自己，看的人关心的是收件人
+  if (mail.type === 1) return mail.toEmail || mail.recipient || '（无收件人）'
+  return mail.name || mail.sendEmail || mail.toEmail || '未知发件人'
+})
 
 const preview = computed(() => {
   const raw = props.mail.text || props.mail.subject || props.mail.content || ''

@@ -32,6 +32,8 @@ export const emailDelete = (emailIds) =>
 export const emailSend = (form) => request('/email/send', { method: 'POST', body: form })
 
 export const starAdd = (emailId) => request('/star/add', { method: 'POST', body: { emailId } })
+export const starList = (params) => request('/star/list', { params })
+
 export const starCancel = (emailId) => request('/star/cancel', { method: 'DELETE', params: { emailId } })
 
 export const resetPassword = (password) =>
@@ -39,3 +41,30 @@ export const resetPassword = (password) =>
 
 export const settingQuery = () => request('/setting/query')
 export const settingSet = (setting) => request('/setting/set', { method: 'PUT', body: setting })
+
+/* ---------------------------------------------------------------- 管理端 */
+export const userList = (params) => request('/user/list', { params })
+export const userAdd = (form) => request('/user/add', { method: 'POST', body: form })
+export const userSetStatus = (userId, status) =>
+  request('/user/setStatus', { method: 'PUT', body: { userId, status } })
+export const userSetPwd = (userId, password) =>
+  request('/user/setPwd', { method: 'PUT', body: { userId, password } })
+export const userResetSendCount = (userId) =>
+  request('/user/resetSendCount', { method: 'PUT', body: { userId } })
+export const userDelete = (userIds) =>
+  request('/user/delete', { method: 'DELETE', params: { userIds: userIds.join(',') } })
+
+export const allEmailList = (params) => request('/allEmail/list', { params })
+export const allEmailDelete = (emailIds) =>
+  request('/allEmail/delete', { method: 'DELETE', params: { emailIds: emailIds.join(',') } })
+
+export const regKeyList = (params) => request('/regKey/list', { params })
+export const regKeyAdd = (form) => request('/regKey/add', { method: 'POST', body: form })
+export const regKeyDelete = (regKeyIds) =>
+  request('/regKey/delete', { method: 'DELETE', params: { regKeyIds: regKeyIds.join(',') } })
+
+export const roleList = () => request('/role/list')
+export const rolePermTree = () => request('/role/permTree')
+
+export const analysisEcharts = (timeZone) =>
+  request('/analysis/echarts', { params: { timeZone } })

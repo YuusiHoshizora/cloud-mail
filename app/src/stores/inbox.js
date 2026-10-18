@@ -2,7 +2,14 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { api, TYPE, UNREAD } from '@/api'
 
+export const FOLDERS = [
+  { key: 'inbox', label: '收件箱' },
+  { key: 'sent', label: '已发送' },
+  { key: 'starred', label: '星标' }
+]
+
 export const useInboxStore = defineStore('inbox', () => {
+  const folder = ref('inbox')
   const items = ref([])
   const total = ref(0)
   const loading = ref(false)
@@ -11,25 +18,50 @@ export const useInboxStore = defineStore('inbox', () => {
   const latestEmailId = ref(0)
 
   const selected = computed(() => items.value.find((m) => m.emailId === selectedId.value) || null)
+  const unreadCount = computed(() => items.value.filter((m) => m.unread === UNREAD.UNREAD).length)
 
   let pollTimer = null
   let pollParams = null
   let stopped = true
 
-  async function load(accountId, { allReceive = 0, type = TYPE.RECEIVE, size = 20 } = {}) {
+  function setFolder(key) {
+    if (folder.value === key) return
+    folder.value = key
+    selectedId.value = null
+    items.value = []
+    total.value = 0
+    latestEmailId.value = 0
+  }
+
+  async function load(accountId, { allReceive = 0, size = 20 } = {}) {
     if (!accountId) return
     loading.value = true
     error.value = ''
     try {
-      const data = await api.emailList({ accountId, allReceive, type, size })
-      items.value = (data?.list || []).slice()
-      total.value = data?.total ?? items.value.length
-      latestEmailId.value = data?.latestEmail?.emailId || items.value[0]?.emailId || 0
-      if (selectedId.value && !items.value.some((m) => m.emailId === selectedId.value)) {
-        selectedId.value = null
+      let list = []
+      if (folder.value === 'starred') {
+        const data = await api.starList({ size })
+        list = Array.isArray(data) ? data : data?.list || []
+        total.value = list.length
+        latestEmailId.value = 0
+      } else {
+        const data = await api.emailList({
+          accountId,
+          allReceive,
+          type: folder.value === 'sent' ? TYPE.SEND : TYPE.RECEIVE,
+          size
+        })
+        list = data?.list || []
+        total.value = data?.total ?? list.length
+        latestEmailId.value = data?.latestEmail?.emailId || list[0]?.emailId || 0
       }
+
+      items.value = list
+      if (selectedId.value && !list.some((m) => m.emailId === selectedId.value)) selectedId.value = null
     } catch (err) {
-      error.value = err?.message || '收件箱加载失败'
+      error.value = err?.message || '加载失败'
+      items.value = []
+      total.value = 0
     } finally {
       loading.value = false
     }
@@ -65,6 +97,9 @@ export const useInboxStore = defineStore('inbox', () => {
     mail.isStar = next
     try {
       await (next ? api.starAdd(mail.emailId) : api.starCancel(mail.emailId))
+      if (folder.value === 'starred' && !next) {
+        items.value = items.value.filter((m) => m.emailId !== mail.emailId)
+      }
     } catch {
       mail.isStar = next ? 0 : 1
     }
@@ -85,7 +120,7 @@ export const useInboxStore = defineStore('inbox', () => {
         accountId: pollParams.accountId,
         allReceive: pollParams.allReceive
       })
-      if (Array.isArray(list) && list.length) {
+      if (folder.value === 'inbox' && Array.isArray(list) && list.length) {
         const fresh = list.filter((m) => !items.value.some((x) => x.emailId === m.emailId))
         if (fresh.length) {
           items.value = [...fresh, ...items.value]
@@ -106,5 +141,21 @@ export const useInboxStore = defineStore('inbox', () => {
     pollParams = null
   }
 
-  return { items, total, loading, error, selectedId, selected, load, select, remove, toggleStar, startPolling, stopPolling }
+  return {
+    folder,
+    items,
+    total,
+    loading,
+    error,
+    selectedId,
+    selected,
+    unreadCount,
+    setFolder,
+    load,
+    select,
+    remove,
+    toggleStar,
+    startPolling,
+    stopPolling
+  }
 })

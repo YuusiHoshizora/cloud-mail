@@ -185,8 +185,95 @@ export const emailSend = async (form) => {
 }
 
 export const starAdd = async (emailId) => { await wait(50); const m = db().find((e) => e.emailId === emailId); if (m) m.isStar = 1 }
+export const starList = async () => {
+  await wait(100)
+  return db().filter((e) => e.isStar === 1 && e.isDel === 0)
+}
+
 export const starCancel = async (emailId) => { await wait(50); const m = db().find((e) => e.emailId === emailId); if (m) m.isStar = 0 }
 
 export const resetPassword = async () => { await wait(120) }
-export const settingQuery = async () => { await wait(80); return {} }
+export const settingQuery = async () => {
+  await wait(100)
+  return {
+    title: '星光圣域 · 邮箱', register: 0, receive: 0, send: 0, addEmail: 0, manyEmail: 0,
+    regKey: 0, minEmailPrefix: 1, domainList: '@stsas.top', notice: 0,
+    noticeTitle: '通知', noticeContent: '', noticeType: 'none', loginOpacity: 0.9
+  }
+}
 export const settingSet = async () => { await wait(120) }
+
+/* ---------------------------------------------------------------- 管理端（演示桩） */
+const MOCK_USERS = [
+  { userId: 1, email: 'yuusi@stsas.top', name: '余事星空', type: 0, status: 0, sendCount: 42, createTime: day(200, '10:00'), isDel: 0 },
+  { userId: 2, email: 'visitor@stsas.top', name: '访客', type: 1, status: 0, sendCount: 3, createTime: day(30, '09:00'), isDel: 0 },
+  { userId: 3, email: 'archive@stsas.top', name: '归档', type: 1, status: 1, sendCount: 0, createTime: day(12, '08:00'), isDel: 0 }
+]
+
+export const userList = async (params = {}) => {
+  await wait(140)
+  const keyword = String(params.email || '').trim()
+  const list = MOCK_USERS.filter((u) => !keyword || u.email.includes(keyword))
+  return { list, total: list.length }
+}
+export const userAdd = async () => { await wait(120) }
+export const userSetStatus = async (userId, status) => {
+  await wait(80)
+  const row = MOCK_USERS.find((u) => u.userId === userId)
+  if (row) row.status = status
+}
+export const userSetPwd = async () => { await wait(120) }
+export const userResetSendCount = async (userId) => {
+  await wait(80)
+  const row = MOCK_USERS.find((u) => u.userId === userId)
+  if (row) row.sendCount = 0
+}
+export const userDelete = async (userIds) => {
+  await wait(100)
+  userIds.forEach((id) => { const i = MOCK_USERS.findIndex((u) => u.userId === id); if (i > -1) MOCK_USERS.splice(i, 1) })
+}
+
+export const allEmailList = async (params = {}) => {
+  await wait(140)
+  const list = db().slice(0, Number(params.size) || 20)
+  return { list, total: db().length, latestEmail: list[0] || { emailId: 0 } }
+}
+export const allEmailDelete = async () => { await wait(100) }
+
+const MOCK_REG_KEYS = [
+  { regKeyId: 1, code: 'STSAS-8F2C', roleId: 1, roleName: '普通用户', count: 5, usedCount: 2, createTime: day(9, '12:00') },
+  { regKeyId: 2, code: 'STSAS-1A04', roleId: 1, roleName: '普通用户', count: 3, usedCount: 3, createTime: day(21, '12:00') }
+]
+export const regKeyList = async () => { await wait(120); return MOCK_REG_KEYS }
+export const regKeyAdd = async (form) => {
+  await wait(120)
+  MOCK_REG_KEYS.unshift({ regKeyId: MOCK_REG_KEYS.length + 10, code: form.code, roleId: form.roleId, roleName: '普通用户', count: form.count, usedCount: 0, createTime: day(0, '12:00') })
+}
+export const regKeyDelete = async (ids) => {
+  await wait(100)
+  ids.forEach((id) => { const i = MOCK_REG_KEYS.findIndex((k) => k.regKeyId === id); if (i > -1) MOCK_REG_KEYS.splice(i, 1) })
+}
+
+export const roleList = async () => {
+  await wait(100)
+  return [
+    { roleId: 0, name: 'admin', isDefault: 1, permKeys: ['*'], sendCount: 0, accountCount: 0, sendType: 'count' },
+    { roleId: 1, name: '普通用户', isDefault: 0, permKeys: ['email:send', 'account:query'], sendCount: 50, accountCount: 2, sendType: 'day' }
+  ]
+}
+export const rolePermTree = async () => { await wait(80); return [] }
+
+export const analysisEcharts = async () => {
+  await wait(160)
+  const days = Array.from({ length: 15 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (14 - i))
+    const p = (n) => String(n).padStart(2, '0')
+    return { date: `${p(d.getMonth() + 1)}-${p(d.getDate())}`, total: Math.floor(Math.random() * 12) }
+  })
+  return {
+    numberCount: 3,
+    userDayCount: 1,
+    daySendTotal: 42,
+    emailDayCount: { receiveDayCount: days, sendDayCount: days.map((d) => ({ ...d, total: Math.floor(d.total / 3) })) }
+  }
+}

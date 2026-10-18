@@ -3,6 +3,12 @@ import { createRouter, createWebHistory } from 'vue-router'
 const routes = [
   { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
   { path: '/', name: 'inbox', component: () => import('@/views/InboxView.vue') },
+  {
+    path: '/admin/:section?',
+    name: 'admin',
+    component: () => import('@/views/AdminView.vue'),
+    meta: { admin: true }
+  },
   { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
