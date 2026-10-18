@@ -17,6 +17,8 @@ export const useInboxStore = defineStore('inbox', () => {
   const error = ref('')
   const selectedId = ref(null)
   const latestEmailId = ref(0)
+  const hasMore = ref(true)
+  const loadingMore = ref(false)
 
   const selected = computed(() => items.value.find((m) => m.emailId === selectedId.value) || null)
   const unreadCount = computed(() => items.value.filter((m) => m.unread === UNREAD.UNREAD).length)
@@ -47,10 +49,12 @@ export const useInboxStore = defineStore('inbox', () => {
     error.value = ''
     try {
       let list = []
+      const pageSize = size
       if (folder.value === 'starred') {
         const data = await api.starList({ size })
         list = Array.isArray(data) ? data : data?.list || []
         total.value = list.length
+        hasMore.value = list.length >= pageSize
         latestEmailId.value = 0
       } else {
         const data = await api.emailList({
@@ -61,6 +65,7 @@ export const useInboxStore = defineStore('inbox', () => {
         })
         list = data?.list || []
         total.value = data?.total ?? list.length
+        hasMore.value = list.length >= pageSize && list.length < total.value
         latestEmailId.value = data?.latestEmail?.emailId || list[0]?.emailId || 0
       }
 
@@ -75,6 +80,40 @@ export const useInboxStore = defineStore('inbox', () => {
     }
   }
 
+  /** 加载更多：用列表最后一条的 emailId 作游标（后端是 lt(emailId, 游标)） */
+  async function loadMore(accountId, { allReceive = 0, size = 20 } = {}) {
+    if (loadingMore.value || !hasMore.value) return
+    const last = items.value[items.value.length - 1]
+    if (!last || !accountId) return
+
+    loadingMore.value = true
+    try {
+      if (folder.value === 'starred') {
+        const data = await api.starList({ emailId: last.emailId, size })
+        const list = Array.isArray(data) ? data : data?.list || []
+        const fresh = list.filter((m) => !items.value.some((x) => x.emailId === m.emailId))
+        items.value = [...items.value, ...fresh]
+        hasMore.value = list.length >= size
+      } else {
+        const data = await api.emailList({
+          accountId,
+          allReceive,
+          type: folder.value === 'sent' ? TYPE.SEND : TYPE.RECEIVE,
+          size,
+          emailId: last.emailId
+        })
+        const list = data?.list || []
+        const fresh = list.filter((m) => !items.value.some((x) => x.emailId === m.emailId))
+        items.value = [...items.value, ...fresh]
+        total.value = data?.total ?? total.value
+        hasMore.value = list.length >= size
+      }
+    } catch {
+      /* 加载更多失败就保持现状 */
+    } finally {
+      loadingMore.value = false
+    }
+  }
   /** 选中即已读：只改这一行，不重建列表（金框靠 CSS 过渡进出） */
   async function select(emailId) {
     selectedId.value = emailId
@@ -157,6 +196,9 @@ export const useInboxStore = defineStore('inbox', () => {
     error,
     selectedId,
     selected,
+    hasMore,
+    loadingMore,
+    loadMore,
     unreadCount,
     setFolder,
     load,

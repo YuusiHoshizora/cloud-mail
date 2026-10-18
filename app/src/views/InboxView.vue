@@ -167,6 +167,32 @@ watch(
     }, 700)
   }
 )
+/* 滚动到底自动加载更多（列表底部放一个哨兵元素） */
+const rowsEl = ref(null)
+const sentinel = ref(null)
+let observer = null
+
+function loadMore() {
+  inbox.loadMore(accountId.value, { allReceive: allReceive.value })
+}
+
+function setupObserver() {
+  observer?.disconnect()
+  observer = null
+  if (!sentinel.value) return
+  observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting) && inbox.folder !== 'drafts') loadMore()
+    },
+    { root: rowsEl.value, rootMargin: '120px' }
+  )
+  observer.observe(sentinel.value)
+}
+
+/* 骨架屏 → 有列表时哨兵才出现，所以用 watch 而不是 onMounted */
+watch(sentinel, (el) => { if (el) setupObserver() })
+
+onUnmounted(() => observer?.disconnect())
 function openMail(emailId) {
   inbox.select(emailId)
   mobileView.value = 'reading'
@@ -321,7 +347,7 @@ async function doLogout() {
           <button class="chip" type="button" :aria-selected="filter === 'attach'" @click="filter = 'attach'">有附件</button>
         </div>
 
-        <div class="rows">
+        <div ref="rowsEl" class="rows">
           <template v-if="inbox.loading && !inbox.items.length">
             <div v-for="n in 6" :key="n" class="row-skeleton"><i></i><i></i></div>
           </template>
@@ -339,6 +365,17 @@ async function doLogout() {
               @select="mail.isDraft ? openDraft(mail.draftId) : openMail(mail.emailId)"
             />
           </template>
+
+          <div ref="sentinel" class="list-sentinel">
+            <button
+              v-if="inbox.folder !== 'drafts' && inbox.hasMore"
+              class="btn btn--xs"
+              type="button"
+              :disabled="inbox.loadingMore"
+              @click="loadMore"
+            >{{ inbox.loadingMore ? '加载中…' : '加载更多' }}</button>
+            <span v-else-if="visibleItems.length" class="meta">已经是全部了</span>
+          </div>
         </div>
       </section>
 

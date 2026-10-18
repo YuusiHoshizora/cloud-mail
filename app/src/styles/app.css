@@ -544,3 +544,12 @@ body {
 }
 .recipient-suggest li.is-active,
 .recipient-suggest li:hover { color: var(--ctl-fg-hover); background: var(--ctl-bg-strong); }
+
+/* 列表底部：加载更多 / 到底提示 */
+.list-sentinel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 42px;
+  padding: 12px 8px 6px;
+}
