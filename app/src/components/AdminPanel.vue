@@ -77,7 +77,9 @@ async function loadUsers() {
 
 function roleName(type) {
   const found = rolesForPicker.value.find((role) => role.roleId === type)
-  return found ? found.name : `角色 #${type}`
+  if (found) return found.name
+  if (Number(type) === 0) return '管理员'
+  return `权限 #${type}`
 }
 
 function openAddUser() {
@@ -287,7 +289,7 @@ async function removeInvite(row) {
   }
 }
 
-/* ------------------------------------------------------------ 角色 */
+/* ------------------------------------------------------------ 权限 */
 const roles = ref([])
 const permTree = ref([])
 
@@ -375,7 +377,7 @@ function splitEmails(text) {
 
 async function saveRole() {
   if (!roleEditor.name.trim()) {
-    error.value = '角色名称不能为空'
+    error.value = '权限名称不能为空'
     return
   }
   const payload = {
@@ -726,7 +728,7 @@ watch(active, () => {
             <input v-model="userEditor.password" class="input" type="text" autocomplete="new-password" />
           </div>
           <div class="field">
-            <label class="field__label">角色</label>
+            <label class="field__label">权限</label>
             <select v-model="userEditor.type" class="input">
               <option v-for="role in rolesForPicker" :key="role.roleId" :value="role.roleId">{{ role.name }}</option>
             </select>
@@ -801,8 +803,8 @@ watch(active, () => {
       </table>
     </template>
 
-    <!-- 角色 -->
-        <!-- 角色 -->
+    <!-- 权限 -->
+        <!-- 权限 -->
     <template v-else-if="active === 'roles'">
       <div class="admin-tools">
         <button class="btn btn--slim" type="button" @click="startCreateRole">新 建 权 限</button>
@@ -825,7 +827,7 @@ watch(active, () => {
               <button class="btn btn--xs btn--danger" type="button" :disabled="!!row.isDefault" @click="removeRole(row)">删除</button>
             </td>
           </tr>
-          <tr v-if="!roles.length"><td colspan="7" class="empty-hint">没有角色</td></tr>
+          <tr v-if="!roles.length"><td colspan="7" class="empty-hint">没有权限组</td></tr>
         </tbody>
       </table>
 
