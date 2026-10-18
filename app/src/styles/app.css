@@ -614,3 +614,10 @@ code { font-family: var(--mail-font-mono); font-size: 12px; color: var(--ctl-fg-
 .invite-field .input { min-height: 34px; }
 .invite-count { max-width: 92px; }
 .nowrap { white-space: nowrap; }
+
+/* 左栏底部账户信息：邮箱/名字过长时滚动，「· 管理员」保持不换行 */
+.account-extra { display: flex; align-items: baseline; gap: 4px; }
+.account-extra > span { white-space: nowrap; }
+.account-extra .scroll-text { flex: 0 1 auto; }
+/* 侧栏账户行里的滚动文本要能被 flex 压缩，否则撑开父级 */
+.side-item .scroll-text { flex: 1 1 auto; min-width: 0; }

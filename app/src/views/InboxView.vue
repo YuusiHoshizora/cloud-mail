@@ -11,6 +11,7 @@ import ComposePopup from '@/components/ComposePopup.vue'
 import ComposePage from '@/components/ComposePage.vue'
 import AdminPanel from '@/components/AdminPanel.vue'
 import SettingsPanel from '@/components/SettingsPanel.vue'
+import ScrollingText from '@/components/ScrollingText.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -279,7 +280,7 @@ async function doLogout() {
           @click.prevent="pickAccount(acc.accountId)"
         >
           <span class="dot" :class="{ 'dot--off': acc.accountId !== accountId }"></span>
-          {{ acc.email }}
+          <ScrollingText :text="acc.email" />
         </a>
 
         <p class="side-group">文件夹</p>
@@ -310,9 +311,11 @@ async function doLogout() {
 
           <p class="side-group">账户信息</p>
           <p class="meta" style="margin: 0 12px; line-height: 1.9">
-          {{ auth.user?.email || '—' }}<br />
-          {{ auth.user?.name || '' }}
-            <span v-if="auth.user?.permKeys?.includes('*')"> · 管理员</span>
+            <ScrollingText :text="auth.user?.email || '—'" />
+            <span class="account-extra">
+              <ScrollingText :text="auth.user?.name || ''" />
+              <span v-if="auth.user?.permKeys?.includes('*')"> · 管理员</span>
+            </span>
           </p>
         </div>
 
