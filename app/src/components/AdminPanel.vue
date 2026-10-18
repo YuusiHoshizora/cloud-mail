@@ -4,6 +4,7 @@ import { api } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { allowedSections, toList, toTotal } from '@/lib/perm'
 import { cvtR2Url, formatDateTime } from '@/lib/url'
+import DateTimePicker from '@/components/DateTimePicker.vue'
 
 const props = defineProps({ section: { type: String, default: '' } })
 
@@ -770,11 +771,17 @@ watch(active, () => {
       <div class="admin-tools">
         <input v-model="invites.code" class="input input--search" type="text" placeholder="邀请码，例如 STSAS-8F2C" />
         <button class="btn btn--slim" type="button" @click="randomCode">随机生成</button>
-        <input v-model="invites.count" class="input input--search" type="number" min="1" style="max-width: 110px" placeholder="次数" />
-        <label class="invite-expire">
-          <span class="meta">有效期</span>
-          <input v-model="invites.expire" class="input input--search" type="datetime-local" style="max-width: 210px" />
+
+        <label class="invite-field">
+          <span class="meta">可用次数</span>
+          <input v-model="invites.count" class="input input--search invite-count" type="number" min="1" />
         </label>
+
+        <label class="invite-field">
+          <span class="meta nowrap">有效期</span>
+          <DateTimePicker v-model="invites.expire" placeholder="选择有效期" />
+        </label>
+
         <button class="btn btn--slim btn--primary" type="button" @click="addInvite">创 建</button>
       </div>
       <table class="table">

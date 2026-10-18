@@ -608,7 +608,9 @@ select.input { appearance: none; cursor: pointer; }
 .bg-actions .meta { flex-basis: 100%; }
 code { font-family: var(--mail-font-mono); font-size: 12px; color: var(--ctl-fg-hover); }
 
-/* 邀请码：有效期输入与创建区对齐 */
-.invite-expire { display: inline-flex; align-items: center; gap: 8px; }
-.invite-expire .input { min-height: 34px; }
-input[type="datetime-local"].input { color-scheme: dark; }
+/* 邀请码创建区：每个字段带小标签，标签不换行 */
+.invite-field { display: inline-flex; align-items: center; gap: 8px; }
+.invite-field .meta { white-space: nowrap; }
+.invite-field .input { min-height: 34px; }
+.invite-count { max-width: 92px; }
+.nowrap { white-space: nowrap; }
