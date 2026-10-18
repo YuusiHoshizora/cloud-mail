@@ -514,3 +514,33 @@ body {
   letter-spacing: 3px;
   color: var(--mail-fg-sub);
 }
+
+/* 收件人输入 + 最近联系人下拉 */
+.recipient-field { position: relative; display: block; flex: 1 1 auto; min-width: 0; }
+.recipient-field .line-input { width: 100%; }
+.recipient-suggest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 40;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--mail-panel-solid);
+  border: 1px solid var(--ctl-border);
+  border-radius: var(--ctl-radius);
+  backdrop-filter: blur(10px);
+  max-height: 220px;
+  overflow-y: auto;
+}
+.recipient-suggest li {
+  padding: 8px 10px;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--mail-fg-sub);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.recipient-suggest li.is-active,
+.recipient-suggest li:hover { color: var(--ctl-fg-hover); background: var(--ctl-bg-strong); }

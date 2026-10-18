@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { ICONS, TOOL_GROUPS, applyCommand } from '@/lib/toolbar'
 import { fileToAttachment, sendMail } from '@/lib/send'
 import { formatBytes } from '@/lib/url'
+import RecipientInput from '@/components/RecipientInput.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -136,7 +137,7 @@ function onKeydown(event) {
       <div class="compose-page__meta">
         <div class="meta-row">
           <span class="meta-row__label">收件人</span>
-          <input v-model="draft.to" class="line-input" type="text" placeholder="recipient@domain" />
+          <RecipientInput v-model="draft.to" placeholder="recipient@domain" />
           <button class="btn btn--ghost btn--slim" type="button" @click="showCc = !showCc">抄送</button>
         </div>
         <div v-if="showCc" class="meta-row">

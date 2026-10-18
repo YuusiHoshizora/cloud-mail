@@ -1,4 +1,5 @@
 import { api } from '@/api'
+import { addContacts } from '@/lib/contacts'
 
 export function splitRecipients(value) {
   return String(value || '')
@@ -50,6 +51,7 @@ export async function sendMail({ auth, draft, content, onProgress }) {
     }))
   })
 
+  addContacts(receiveEmail)
   onProgress?.(100)
   return result
 }

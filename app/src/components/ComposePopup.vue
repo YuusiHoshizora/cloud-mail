@@ -3,6 +3,7 @@ import { nextTick, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { fileToAttachment, sendMail } from '@/lib/send'
 import { formatBytes } from '@/lib/url'
+import RecipientInput from '@/components/RecipientInput.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -88,7 +89,7 @@ async function send() {
     </div>
 
     <div class="compose-fields">
-      <input v-model="draft.to" class="line-input" type="text" placeholder="收件人 · recipient@domain" />
+      <RecipientInput v-model="draft.to" />
       <input v-model="draft.subject" class="line-input" type="text" placeholder="主题 · subject" />
     </div>
 
