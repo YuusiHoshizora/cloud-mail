@@ -45,8 +45,9 @@ function countWords() {
   counter.value = text.length
 }
 
-function onInput() {
+function onInput(event) {
   countWords()
+  if (event?.target) props.draft.html = event.target.innerHTML
   if (saving.value) return
   saving.value = true
   status.value = '正在保存…'

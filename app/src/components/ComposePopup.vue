@@ -8,7 +8,7 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   draft: { type: Object, required: true }
 })
-const emit = defineEmits(['close', 'expand', 'sent'])
+const emit = defineEmits(['close', 'expand', 'sent', 'discard'])
 
 const auth = useAuthStore()
 const bodyEl = ref(null)
@@ -92,7 +92,14 @@ async function send() {
       <input v-model="draft.subject" class="line-input" type="text" placeholder="主题 · subject" />
     </div>
 
-    <div ref="bodyEl" class="compose-body" contenteditable="true" role="textbox" aria-multiline="true"></div>
+    <div
+      ref="bodyEl"
+      class="compose-body"
+      contenteditable="true"
+      role="textbox"
+      aria-multiline="true"
+      @input="draft.html = $event.target.innerHTML"
+    ></div>
 
     <div v-if="draft.attachments.length" class="attach-list" style="padding: 0 18px 10px">
       <span v-for="(att, index) in draft.attachments" :key="att.filename + index" class="attach-chip">
@@ -104,6 +111,7 @@ async function send() {
 
     <div class="compose-foot">
       <button class="btn btn--primary" type="button" :disabled="sending" @click="send">发 送</button>
+      <button v-if="draft.draftId" class="btn btn--ghost" type="button" @click="$emit('discard')">丢弃草稿</button>
       <button class="btn" type="button" @click="fileEl?.click()">附 件</button>
       <input ref="fileEl" type="file" multiple hidden @change="onFiles" />
       <span class="meta compose-foot__meta">{{ status }}</span>

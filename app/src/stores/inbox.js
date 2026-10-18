@@ -5,7 +5,8 @@ import { api, TYPE, UNREAD } from '@/api'
 export const FOLDERS = [
   { key: 'inbox', label: '收件箱' },
   { key: 'sent', label: '已发送' },
-  { key: 'starred', label: '星标' }
+  { key: 'starred', label: '星标' },
+  { key: 'drafts', label: '草稿' }
 ]
 
 export const useInboxStore = defineStore('inbox', () => {
@@ -35,6 +36,13 @@ export const useInboxStore = defineStore('inbox', () => {
 
   async function load(accountId, { allReceive = 0, size = 20 } = {}) {
     if (!accountId) return
+    if (folder.value === 'drafts') {
+      // 草稿在 IndexedDB 里，由视图层加载
+      items.value = []
+      total.value = 0
+      loading.value = false
+      return
+    }
     loading.value = true
     error.value = ''
     try {

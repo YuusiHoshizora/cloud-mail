@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { FOLDERS, useInboxStore } from '@/stores/inbox'
 import { allowedSections } from '@/lib/perm'
+import { deleteDraft, draftToRow, listDrafts, newDraftId, putDraft } from '@/lib/drafts'
 import MailRow from '@/components/MailRow.vue'
 import MailReading from '@/components/MailReading.vue'
 import ComposePopup from '@/components/ComposePopup.vue'
@@ -20,7 +21,10 @@ const accountId = ref(auth.currentAccount?.accountId ?? null)
 const filter = ref('all')
 const mobileView = ref('list')
 
+const drafts = ref([])
+
 const draft = reactive({
+  draftId: '',
   to: '',
   cc: '',
   subject: '',
@@ -43,6 +47,7 @@ function goAdmin(key) {
 const selected = computed(() => inbox.selected)
 
 const visibleItems = computed(() => {
+  if (inbox.folder === 'drafts') return draftRows.value
   const list = inbox.items
   if (filter.value === 'unread') return list.filter((m) => m.unread === 0)
   if (filter.value === 'attach') return list.filter((m) => (m.attList || []).length > 0)
@@ -53,6 +58,7 @@ const allReceive = computed(() => Number(auth.currentAccount?.allReceive || 0))
 const emptyText = computed(() => {
   if (inbox.folder === 'sent') return '还没有发出过邮件。'
   if (inbox.folder === 'starred') return '还没有标记的邮件。'
+  if (inbox.folder === 'drafts') return '没有草稿。写信的内容会自动存在本机。'
   return '收件箱是空的。'
 })
 
@@ -105,6 +111,62 @@ onUnmounted(() => inbox.stopPolling())
 
 watch(accountId, () => refresh())
 
+/* ------------------------------------------------------------ 草稿箱 */
+const draftRows = computed(() => drafts.value.map(draftToRow))
+
+async function loadDrafts() {
+  drafts.value = await listDrafts()
+}
+
+function openDraft(draftId) {
+  const found = drafts.value.find((item) => item.id === draftId)
+  if (!found) return
+  Object.assign(draft, {
+    draftId: found.id,
+    to: found.to || '',
+    cc: found.cc || '',
+    subject: found.subject || '',
+    html: found.html || '',
+    sendType: found.sendType || '',
+    emailId: found.emailId || 0,
+    attachments: found.attachments || [],
+    mode: 'popup'
+  })
+}
+
+async function discardCurrentDraft() {
+  await deleteDraft(draft.draftId)
+  draft.draftId = ''
+  draft.mode = 'closed'
+  draft.html = ''
+  await loadDrafts()
+}
+
+/* 自动存草稿：停止输入 700ms 后写 IndexedDB（与旧版一致，纯本地） */
+let draftTimer = null
+watch(
+  () => [draft.mode, draft.to, draft.cc, draft.subject, draft.html, draft.attachments.length],
+  () => {
+    if (draft.mode === 'closed') return
+    if (!draft.to && !draft.subject && !(draft.html || '').replace(/<[^>]*>/g, '').trim()) return
+    clearTimeout(draftTimer)
+    draftTimer = setTimeout(async () => {
+      if (!draft.draftId) draft.draftId = newDraftId()
+      await putDraft({
+        id: draft.draftId,
+        to: draft.to,
+        cc: draft.cc,
+        subject: draft.subject,
+        html: draft.html,
+        attachments: draft.attachments,
+        sendType: draft.sendType,
+        emailId: draft.emailId,
+        updatedAt: Date.now()
+      })
+      if (inbox.folder === 'drafts') await loadDrafts()
+    }, 700)
+  }
+)
 function openMail(emailId) {
   inbox.select(emailId)
   mobileView.value = 'reading'
@@ -116,6 +178,7 @@ function backToList() {
 
 function openCompose(preset = {}) {
   Object.assign(draft, {
+    draftId: '',
     to: preset.to || '',
     cc: '',
     subject: preset.subject || '',
@@ -157,6 +220,8 @@ function onCollapse(html) {
 }
 
 async function onSent() {
+  if (draft.draftId) await deleteDraft(draft.draftId)
+  draft.draftId = ''
   draft.mode = 'closed'
   draft.html = ''
   await refresh()
@@ -250,7 +315,7 @@ async function doLogout() {
           <button class="btn btn--icon" type="button" title="刷新" @click="refresh">↻</button>
         </div>
 
-        <div class="filters">
+        <div v-if="inbox.folder !== 'drafts'" class="filters">
           <button class="chip" type="button" :aria-selected="filter === 'all'" @click="filter = 'all'">全部</button>
           <button class="chip" type="button" :aria-selected="filter === 'unread'" @click="filter = 'unread'">未读</button>
           <button class="chip" type="button" :aria-selected="filter === 'attach'" @click="filter = 'attach'">有附件</button>
@@ -271,7 +336,7 @@ async function doLogout() {
               :key="mail.emailId"
               :mail="mail"
               :selected="mail.emailId === inbox.selectedId"
-              @select="openMail"
+              @select="mail.isDraft ? openDraft(mail.draftId) : openMail(mail.emailId)"
             />
           </template>
         </div>
@@ -300,6 +365,7 @@ async function doLogout() {
       @close="draft.mode = 'closed'"
       @expand="onExpand"
       @sent="onSent"
+      @discard="discardCurrentDraft"
     />
 
     <ComposePage
