@@ -265,15 +265,21 @@ export const rolePermTree = async () => { await wait(80); return [] }
 
 export const analysisEcharts = async () => {
   await wait(160)
-  const days = Array.from({ length: 15 }, (_, i) => {
+  // 结构与真实接口一致：numberCount 是对象，userDayCount / *DayCount 是 [{date,total}]
+  const days = (scale) => Array.from({ length: 15 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (14 - i))
     const p = (n) => String(n).padStart(2, '0')
-    return { date: `${p(d.getMonth() + 1)}-${p(d.getDate())}`, total: Math.floor(Math.random() * 12) }
+    return { date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`, total: Math.floor(Math.random() * scale) }
   })
   return {
-    numberCount: 3,
-    userDayCount: 1,
-    daySendTotal: 42,
-    emailDayCount: { receiveDayCount: days, sendDayCount: days.map((d) => ({ ...d, total: Math.floor(d.total / 3) })) }
+    numberCount: {
+      receiveTotal: 128, sendTotal: 42, delReceiveTotal: 3, delSendTotal: 0,
+      normalReceiveTotal: 125, normalSendTotal: 42,
+      userTotal: 3, normalUserTotal: 3, delUserTotal: 0,
+      accountTotal: 4, normalAccountTotal: 4, delAccountTotal: 0
+    },
+    userDayCount: days(2),
+    daySendTotal: 2,
+    emailDayCount: { receiveDayCount: days(12), sendDayCount: days(4) }
   }
 }

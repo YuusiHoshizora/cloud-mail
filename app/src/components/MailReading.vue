@@ -28,7 +28,7 @@ const isLightContent = computed(() => LIGHT_RE.test(props.mail.content || ''))
 
 const darkCss = `
   html{color-scheme:dark}
-  html,body{margin:0;padding:0;background:transparent!important;color:rgba(255,255,255,.88);
+  html,body{margin:0;padding:0;background:transparent!important;color:#e6e6ef;
     font-family:system-ui,"Segoe UI","Microsoft YaHei",sans-serif;font-size:15px;line-height:1.9;
     letter-spacing:.2px;word-break:break-word}
   a{color:rgba(255,255,255,.9);text-decoration:underline;text-decoration-color:rgba(255,215,0,.35);text-underline-offset:3px}
@@ -39,6 +39,9 @@ const darkCss = `
   table{max-width:100%;border-collapse:collapse}
   td,th{border-color:rgba(255,255,255,.14)}
   hr{border:0;height:1px;background:rgba(255,255,255,.12)}
+  /* 邮件没声明背景时，它自带的 color 常常是深灰（发件端浅色主题写的），
+     压在深色底上等于看不见 —— 一律回退成站点默认字色。链接单独保留。 */
+  body :not(a){color:inherit!important}
 `
 
 const lightCss = `

@@ -203,6 +203,16 @@ async function loadAnalysis() {
   }
 }
 
+/** 统计接口里有的字段是数字，有的是对象（如 numberCount.receiveTotal） */
+function pick(source, keys = [], fallback = '—') {
+  if (source === null || source === undefined) return fallback
+  if (typeof source === 'number' || typeof source === 'string') return source
+  for (const key of keys) {
+    const value = source[key]
+    if (value !== null && value !== undefined) return value
+  }
+  return fallback
+}
 function bars(source) {
   const list = Array.isArray(source)
     ? source
@@ -387,14 +397,23 @@ watch(active, () => {
     <!-- 统计 -->
     <template v-else-if="active === 'analysis'">
       <div class="stat-row">
-        <div class="stat-card"><span class="meta">用户总数</span><b>{{ analysis?.numberCount ?? '—' }}</b></div>
-        <div class="stat-card"><span class="meta">今日新增用户</span><b>{{ analysis?.userDayCount ?? '—' }}</b></div>
-        <div class="stat-card"><span class="meta">今日发送</span><b>{{ analysis?.daySendTotal ?? '—' }}</b></div>
+        <div class="stat-card"><span class="meta">用户总数</span><b>{{ pick(analysis?.numberCount, ['normalUserTotal', 'userTotal']) }}</b></div>
+        <div class="stat-card"><span class="meta">账户总数</span><b>{{ pick(analysis?.numberCount, ['normalAccountTotal', 'accountTotal']) }}</b></div>
+        <div class="stat-card"><span class="meta">累计收信</span><b>{{ pick(analysis?.numberCount, ['normalReceiveTotal', 'receiveTotal']) }}</b></div>
+        <div class="stat-card"><span class="meta">累计发信</span><b>{{ pick(analysis?.numberCount, ['normalSendTotal', 'sendTotal']) }}</b></div>
+        <div class="stat-card"><span class="meta">今日发送</span><b>{{ pick(analysis?.daySendTotal, []) }}</b></div>
       </div>
+
+      <p class="meta">近 15 天新增用户</p>
+      <div class="bars">
+        <i v-for="item in bars(analysis?.userDayCount)" :key="'u' + item.date" :style="{ height: item.height + '%' }" :title="`${item.date} · ${item.total}`"></i>
+      </div>
+
       <p class="meta">近 15 天收信</p>
       <div class="bars">
         <i v-for="item in bars(analysis?.emailDayCount?.receiveDayCount)" :key="'r' + item.date" :style="{ height: item.height + '%' }" :title="`${item.date} · ${item.total}`"></i>
       </div>
+
       <p class="meta">近 15 天发信</p>
       <div class="bars">
         <i v-for="item in bars(analysis?.emailDayCount?.sendDayCount)" :key="'s' + item.date" :style="{ height: item.height + '%' }" :title="`${item.date} · ${item.total}`"></i>
