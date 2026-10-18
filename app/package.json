@@ -1,0 +1,24 @@
+{
+  "name": "mail-stsas-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:embed": "vite build --mode embed",
+    "build:mock": "vite build --mode mock --base=/",
+    "build:pages": "vite build --mode pages",
+    "serve:dist": "node scripts/serve-dist.mjs",
+    "preview": "vite preview --port 3002"
+  },
+  "dependencies": {
+    "pinia": "^2.3.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.0.7"
+  }
+}

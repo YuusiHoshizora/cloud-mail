@@ -1,0 +1,394 @@
+/* ============================================================================
+   mail.stsas.top · 设计令牌 + 基础组件
+   ----------------------------------------------------------------------------
+   令牌 1:1 继承 StarlightSacredSanctuary.top 的 global.css :root，只追加
+   --mail-* 补充项；组件全部只用令牌，不出现自创色值。
+
+   用法：
+     @import "./tokens.css";
+     或 <link rel="stylesheet" href="/assets/css/tokens.css">
+
+   权威来源仍是主站 assets/css/global.css 的 :root —— 那边改了，这里跟着改。
+   ========================================================================== */
+
+/* --- 可选：跨域引用主站 Sarasa（需主站对 /assets/fonts/* 放行 CORS） ---------
+   不放行 CORS 的话浏览器会直接拒载，请先按 docs/04-domain-plan.md 第 4 节处理。
+@font-face {
+  font-family: "Sarasa Gothic SC";
+  src: url("https://starlightsacredsanctuary.top/assets/fonts/SarasaGothicSC-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: "Sarasa Gothic SC";
+  src: url("https://starlightsacredsanctuary.top/assets/fonts/SarasaGothicSC-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: block;
+}
+--------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: dark;
+
+  /* —— 控件语言（继承自主站，勿改语义）—— */
+  --ctl-bg: rgba(255, 255, 255, 0.04);
+  --ctl-bg-strong: rgba(255, 215, 0, 0.15);
+  --ctl-bg-focus: rgba(255, 215, 0, 0.08);
+  --ctl-border: rgba(255, 255, 255, 0.12);
+  --ctl-border-hover: #FFD700;
+  --ctl-fg: #ffffff;
+  --ctl-fg-dim: rgba(255, 255, 255, 0.5);
+  --ctl-fg-hover: #FFD700;
+  --ctl-radius: 4px;
+  --ctl-panel-radius: 16px;
+  --ctl-err: #ff6b6b;
+  --ctl-ease: 0.25s;              /* ⚠️ 时长，不是缓动函数 */
+  --ctl-transition: color var(--ctl-ease), background-color var(--ctl-ease),
+                    border-color var(--ctl-ease);
+
+  /* —— 邮箱补充 —— */
+  --mail-panel: rgba(20, 20, 50, 0.45);
+  --mail-panel-solid: rgba(14, 14, 32, 0.82);
+  --mail-panel-opaque: #0d0d19;     /* 读信栏专用：完全不透光，背景不得外泄 */
+  --mail-row-h: 56px;
+  --mail-dot: 7px;
+  --mail-nav-h: 72px;
+  --mail-aside-w: 240px;
+  --mail-gutter: 16px;
+  --stagger-step: 40ms;             /* 列表逐条出现的间隔；整列应 ≤ 320ms */
+
+  /* —— 文字层次（主站同款）—— */
+  --mail-fg-mid: rgba(255, 255, 255, 0.9);
+  --mail-fg-sub: rgba(255, 255, 255, 0.5);
+  --mail-fg-mute: rgba(255, 255, 255, 0.35);
+
+  /* —— 字体 —— */
+  --mail-font-ui: "Sarasa Gothic SC", "Sarasa", system-ui, sans-serif;
+  --mail-font-body: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;  /* 正文不用 Sarasa */
+  --mail-font-mono: ui-monospace, "Cascadia Mono", Consolas, "Sarasa Mono", monospace;
+}
+
+/* ============================ 基础 ============================ */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { background: #0a0a12; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--mail-fg-mid);
+  font-family: var(--mail-font-ui);
+  font-synthesis-weight: none;      /* 不做伪粗体，同主站 */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+body::-webkit-scrollbar { display: none; }
+
+::selection { background: rgba(58, 48, 114, 0.25); color: #C0C0C0; }
+
+/* 背景三层：底色 + 六边形网格 + 压暗。主界面把网格调到很低，登录页可全开。 */
+.mail-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background-color: #0a0a12;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='51.9615' height='90' viewBox='0 0 51.9615 90'%3E%3Cg fill='none' stroke='%23c0c0c0' stroke-width='1' stroke-opacity='.35'%3E%3Cpath d='M0 -60L25.98 -45L25.98 -15L0 0L-25.98 -15L-25.98 -45Z'/%3E%3Cpath d='M51.96 -60L77.94 -45L77.94 -15L51.96 0L25.98 -15L25.98 -45Z'/%3E%3Cpath d='M-25.98 -15L0 0L0 30L-25.98 45L-51.96 30L-51.96 0Z'/%3E%3Cpath d='M25.98 -15L51.96 0L51.96 30L25.98 45L0 30L0 0Z'/%3E%3Cpath d='M0 30L25.98 45L25.98 75L0 90L-25.98 75L-25.98 45Z'/%3E%3Cpath d='M51.96 30L77.94 45L77.94 75L51.96 90L25.98 75L25.98 45Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 51.9615px 90px;
+  opacity: 1;                       /* 满强度，与主站首页一致；安静靠"面板不透光"，不靠压暗背景 */
+}
+.mail-bg--quiet { opacity: 0.25; }  /* 确实需要压暗时才用 */
+
+.mail-dim {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.8));
+}
+
+/* ============================ 外壳 ============================ */
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--mail-nav-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 60px;
+  background: rgba(10, 10, 30, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+.navbar .logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 24px;
+  letter-spacing: 4px;
+  color: var(--ctl-fg);
+  text-decoration: none;
+}
+.navbar nav { display: flex; gap: 40px; }
+.navbar nav a {
+  color: var(--ctl-fg);
+  text-decoration: none;
+  opacity: 0.75;
+  transition: var(--ctl-transition);
+}
+.navbar nav a:hover,
+.navbar nav a:focus-visible,
+.navbar nav a[aria-current="page"] {
+  opacity: 1;
+  color: var(--ctl-fg-hover);
+}
+
+.site-footer {
+  margin-top: auto;
+  padding: 28px 24px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--mail-fg-mute);
+}
+.site-footer a { color: var(--mail-fg-sub); text-decoration: none; }
+.site-footer a:hover,
+.site-footer a:focus-visible { color: var(--ctl-fg-hover); }
+
+/* ============================ 面板 ============================ */
+
+.panel {
+  padding: 26px 28px;
+  background: var(--mail-panel);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--ctl-panel-radius);
+  backdrop-filter: blur(8px);
+}
+.panel--tight { padding: 16px; }
+.panel--solid { background: var(--mail-panel-solid); }
+
+/* ============================ 按钮 ============================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--ctl-fg);
+  background: var(--ctl-bg);
+  border: 1px solid var(--ctl-border);
+  border-radius: var(--ctl-radius);
+  transition: var(--ctl-transition);
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn:hover,
+.btn:focus-visible {
+  color: var(--ctl-fg-hover);
+  background: var(--ctl-bg-strong);
+  border-color: var(--ctl-border-hover);
+  outline: none;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn--primary {
+  background: var(--ctl-bg-strong);
+  border-color: var(--ctl-border-hover);
+  color: var(--ctl-fg);
+}
+.btn--ghost { background: transparent; border-color: transparent; color: var(--ctl-fg-dim); }
+.btn--ghost:hover { background: var(--ctl-bg); border-color: var(--ctl-border); }
+.btn--danger { color: var(--ctl-err); border-color: rgba(255, 107, 107, 0.4); }
+.btn--danger:hover { background: rgba(255, 107, 107, 0.12); border-color: var(--ctl-err); color: var(--ctl-err); }
+.btn--icon { min-height: 32px; width: 32px; padding: 0; border-color: transparent; color: var(--ctl-fg-dim); }
+.btn--icon:hover { color: var(--ctl-fg-hover); border-color: var(--ctl-border-hover); }
+
+/* ============================ 表单 ============================ */
+
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field__label {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--mail-fg-mute);
+}
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ctl-fg);
+  background: var(--ctl-bg);
+  border: 1px solid var(--ctl-border);
+  border-radius: var(--ctl-radius);
+  transition: var(--ctl-transition);
+  outline: none;
+}
+.input::placeholder { color: var(--mail-fg-mute); }
+.input:hover { border-color: rgba(255, 255, 255, 0.24); }
+.input:focus {
+  background: var(--ctl-bg-focus);
+  border-color: var(--ctl-border-hover);
+}
+.field__error { font-size: 12px; letter-spacing: 1px; color: var(--ctl-err); }
+
+/* 输入行（写信：无边框、底线转金） */
+.line-input {
+  width: 100%;
+  padding: 10px 2px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ctl-fg);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ctl-border);
+  outline: none;
+  transition: var(--ctl-transition);
+}
+.line-input:focus { border-bottom-color: var(--ctl-border-hover); }
+
+/* 开关：方角轨道 + 12px 方滑钮 */
+.switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border: 1px solid var(--ctl-border);
+  border-radius: var(--ctl-radius);
+  background: var(--ctl-bg);
+  cursor: pointer;
+  transition: var(--ctl-transition);
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 12px;
+  height: 12px;
+  background: var(--ctl-fg-dim);
+  transition: var(--ctl-transition);
+}
+.switch[aria-checked="true"] { border-color: var(--ctl-border-hover); background: var(--ctl-bg-strong); }
+.switch[aria-checked="true"]::after { left: 22px; background: var(--ctl-border-hover); }
+
+/* ============================ 指示器 ============================ */
+
+/* 小方点：未读 / 已完成 / 信号灯 */
+.dot {
+  display: inline-block;
+  width: var(--mail-dot);
+  height: var(--mail-dot);
+  border-radius: 1px;
+  background: var(--ctl-border-hover);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.85);
+  flex: 0 0 auto;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.dot--off {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+}
+
+/* 状态文字 */
+.meta { font-size: 12px; letter-spacing: 1px; color: var(--mail-fg-mute); }
+
+/* ============================ 工作台布局 ============================ */
+
+.workspace {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: var(--mail-aside-w) minmax(320px, 1fr) minmax(420px, 1.4fr);
+  gap: var(--mail-gutter);
+  padding: calc(var(--mail-nav-h) + 24px) 24px 24px;
+  min-height: 0;
+}
+@media (max-width: 1024px) {
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .workspace > .pane--aside { display: none; }
+  .workspace > .pane--aside.is-open { display: block; position: fixed; inset: var(--mail-nav-h) 24px 24px; z-index: 50; }
+}
+
+/* 列表行 */
+.mail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--mail-row-h);
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--ctl-radius);
+  cursor: pointer;
+  transition: var(--ctl-transition);
+}
+.mail-row:hover { background: var(--ctl-bg); color: var(--ctl-fg-hover); }
+.mail-row[aria-selected="true"] { background: var(--ctl-bg-focus); border-color: var(--ctl-border-hover); }
+.mail-row__from { color: var(--ctl-fg); }
+.mail-row--read .mail-row__from { color: var(--mail-fg-sub); }
+.mail-row__subject {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+.mail-row__time { font-size: 12px; color: var(--mail-fg-mute); letter-spacing: 1px; }
+
+/* 文件夹 / 账户列表项：唯一允许位移的条目（照主站 .tool-entry） */
+.side-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--mail-fg-sub);
+  border-radius: var(--ctl-radius);
+  text-decoration: none;
+  transition: var(--ctl-transition), transform 0.2s ease;
+}
+.side-item:hover,
+.side-item[aria-current="true"] { color: var(--ctl-fg-hover); transform: translateX(5px); }
+.side-item::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 13px;
+  bottom: 13px;
+  width: 3px;
+  background: var(--ctl-border-hover);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.side-item[aria-current="true"]::before { opacity: 1; }
+
+/* ============================ 动效工具类 ============================ */
+
+.is-in { animation: mail-fade-in 0.35s ease-out both; }
+@keyframes mail-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 逐条出现：给子项加递增的 --i 序号。
+   列表类界面用 40ms/条（整列 ≤ 320ms）——主站正文那种 340ms 是"逐句揭示"的节奏，
+   用在邮件列表上就是"加载很慢"，别照搬。 */
+.stagger > * { animation: mail-fade-in 0.28s ease-out both; animation-delay: calc(var(--i, 0) * var(--stagger-step)); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
