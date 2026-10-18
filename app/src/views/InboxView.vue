@@ -53,7 +53,13 @@ const emptyText = computed(() => {
 })
 
 function pickAccount(id) {
-  accountId.value = id
+  if (id !== accountId.value) accountId.value = id
+  // 在管理面板里点账户 = 想回去看邮件
+  if (isAdmin.value) {
+    router.push('/')
+    return
+  }
+  refresh()
 }
 
 async function refresh() {
@@ -64,12 +70,15 @@ async function refresh() {
 }
 
 function pickFolder(key) {
-  if (inbox.folder === key) {
-    refresh()
+  if (inbox.folder !== key) {
+    inbox.setFolder(key)
+    filter.value = 'all'
+  }
+  // 在管理面板里点文件夹 = 想回去看邮件（watch(isAdmin) 会负责重新拉取）
+  if (isAdmin.value) {
+    router.push('/')
     return
   }
-  inbox.setFolder(key)
-  filter.value = 'all'
   refresh()
 }
 

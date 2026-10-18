@@ -6,7 +6,6 @@ import { allowedSections, toList, toTotal } from '@/lib/perm'
 import { formatDateTime } from '@/lib/url'
 
 const props = defineProps({ section: { type: String, default: '' } })
-defineEmits(['go'])
 
 const auth = useAuthStore()
 
@@ -280,22 +279,11 @@ watch(active, () => {
 <template>
   <section class="pane pane--admin panel">
     <div class="admin-head">
-      <div class="admin-tabs">
-        <button
-          v-for="item in sections"
-          :key="item.key"
-          class="chip"
-          type="button"
-          :aria-selected="item.key === active"
-          @click="$emit('go', item.key)"
-        >{{ item.label }}</button>
-      </div>
+      <h2 class="admin-title">{{ activeLabel }}</h2>
       <span v-if="busy" class="meta">加载中…</span>
       <span v-if="message" class="meta">{{ message }}</span>
       <span v-if="error" class="field__error">{{ error }}</span>
     </div>
-
-    <h2 class="admin-title">{{ activeLabel }}</h2>
 
     <!-- 用户 -->
     <template v-if="active === 'users'">
@@ -449,7 +437,7 @@ watch(active, () => {
           <button class="switch" type="button" role="switch" :aria-checked="Number(settings.form?.notice ?? 1) === 0" @click="toggleSwitch('notice')"></button></div>
       </div>
       <div class="admin-tools" style="margin-top: 20px">
-        <button class="btn btn--primary" type="button" :disabled="busy" @click="saveSettings">保 存 改 动</button>
+        <button class="btn btn--enter" type="button" :disabled="busy" @click="saveSettings">保 存 改 动</button>
         <span class="meta">{{ Object.keys(settings.patch).length }} 个字段待保存</span>
       </div>
     </template>

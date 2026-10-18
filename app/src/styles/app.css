@@ -494,6 +494,6 @@ body {
   overflow-y: auto;
   min-height: 0;
 }
-.pane--admin .admin-head { margin-bottom: 14px; }
-.admin-tabs { display: flex; gap: 8px; flex-wrap: wrap; flex: 1 1 auto; }
-.pane--admin .admin-title { margin: 0 0 16px; }
+.pane--admin .admin-head { margin-bottom: 18px; }
+
+.pane--admin .admin-title { margin: 0; }

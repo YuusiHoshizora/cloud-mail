@@ -392,3 +392,20 @@ body::-webkit-scrollbar { display: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* 主站首页 ENTER 按钮的同一套外观：无实底、1px 描边、hover 转金。
+   用于"页面上最重要但不想抢眼"的主动作（如保存）。 */
+.btn--enter {
+  padding: 12px 32px;
+  font-size: 15px;
+  letter-spacing: 2px;
+  background: var(--ctl-bg);
+  border-color: var(--ctl-border);
+  color: var(--ctl-fg);
+}
+.btn--enter:hover,
+.btn--enter:focus-visible {
+  color: var(--ctl-fg-hover);
+  background: var(--ctl-bg-strong);
+  border-color: var(--ctl-border-hover);
+}
