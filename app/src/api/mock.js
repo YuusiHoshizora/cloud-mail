@@ -213,7 +213,8 @@ const MOCK_USERS = [
 export const userList = async (params = {}) => {
   await wait(140)
   const keyword = String(params.email || '').trim()
-  const list = MOCK_USERS.filter((u) => !keyword || u.email.includes(keyword))
+  const isDel = Number(params.isDel || 0)
+  const list = MOCK_USERS.filter((u) => Number(u.isDel || 0) === isDel).filter((u) => !keyword || u.email.includes(keyword))
   return { list, total: list.length }
 }
 export const userAdd = async () => { await wait(120) }
@@ -338,3 +339,14 @@ export const accountSetAsTop = async (accountId) => {
   acc().forEach((a) => { a.sort = a.accountId === accountId ? 1 : 0 })
 }
 export const userDeleteSelf = async () => { await wait(150) }
+
+export const userSetType = async (userId, type) => {
+  await wait(80)
+  const row = MOCK_USERS.find((u) => u.userId === userId)
+  if (row) row.type = type
+}
+export const userRestore = async (userId) => {
+  await wait(100)
+  const row = MOCK_USERS.find((u) => u.userId === userId)
+  if (row) row.isDel = 0
+}

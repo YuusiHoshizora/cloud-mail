@@ -61,6 +61,10 @@ export const userSetStatus = (userId, status) =>
   request('/user/setStatus', { method: 'PUT', body: { userId, status } })
 export const userSetPwd = (userId, password) =>
   request('/user/setPwd', { method: 'PUT', body: { userId, password } })
+export const userSetType = (userId, type) =>
+  request('/user/setType', { method: 'PUT', body: { userId, type } })
+export const userRestore = (userId, type) =>
+  request('/user/restore', { method: 'PUT', body: { userId, type } })
 export const userResetSendCount = (userId) =>
   request('/user/resetSendCount', { method: 'PUT', body: { userId } })
 export const userDelete = (userIds) =>

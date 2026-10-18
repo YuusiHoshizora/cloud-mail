@@ -31,17 +31,38 @@ function fail(err) {
 }
 
 /* ------------------------------------------------------------ 用户 */
-const users = reactive({ list: [], total: 0, num: 1, size: 20, email: '' })
+const users = reactive({ list: [], total: 0, num: 1, size: 20, email: '', status: -1, isDel: 0 })
+
+const userEditor = reactive({
+  open: false,
+  mode: 'add',
+  userId: null,
+  email: '',
+  password: '',
+  type: 1
+})
+
+const rolesForPicker = ref([])
+
+async function ensureRoles() {
+  if (rolesForPicker.value.length) return
+  try {
+    rolesForPicker.value = toList(await api.roleList())
+  } catch {
+    rolesForPicker.value = []
+  }
+}
 
 async function loadUsers() {
   busy.value = true
   try {
+    await ensureRoles()
     const data = await api.userList({
       num: users.num,
       size: users.size,
       email: users.email || undefined,
-      status: -1,
-      isDel: 0,
+      status: Number(users.status),
+      isDel: Number(users.isDel),
       timeSort: 0
     })
     users.list = toList(data)
@@ -50,6 +71,79 @@ async function loadUsers() {
     fail(err)
   } finally {
     busy.value = false
+  }
+}
+
+function roleName(type) {
+  const found = rolesForPicker.value.find((role) => role.roleId === type)
+  return found ? found.name : `角色 #${type}`
+}
+
+function openAddUser() {
+  Object.assign(userEditor, { open: true, mode: 'add', userId: null, email: '', password: '', type: rolesForPicker.value[0]?.roleId ?? 1 })
+}
+
+function openEditUser(row) {
+  Object.assign(userEditor, { open: true, mode: 'edit', userId: row.userId, email: row.email, password: '', type: row.type })
+}
+
+function closeUserEditor() {
+  userEditor.open = false
+}
+
+async function saveUser() {
+  if (userEditor.mode === 'add') {
+    if (!userEditor.email.trim()) {
+      error.value = '请填写完整邮箱地址'
+      return
+    }
+    if (String(userEditor.password).length < 6) {
+      error.value = '初始密码至少 6 位'
+      return
+    }
+    busy.value = true
+    try {
+      await api.userAdd({
+        email: userEditor.email.trim(),
+        type: Number(userEditor.type),
+        password: userEditor.password
+      })
+      note('用户已创建')
+      userEditor.open = false
+      await loadUsers()
+    } catch (err) {
+      fail(err)
+    } finally {
+      busy.value = false
+    }
+    return
+  }
+
+  /* 编辑：密码留空表示不改 */
+  busy.value = true
+  try {
+    if (userEditor.password) {
+      if (String(userEditor.password).length < 6) throw new Error('新密码至少 6 位')
+      await api.userSetPwd(userEditor.userId, userEditor.password)
+    }
+    await api.userSetType(userEditor.userId, Number(userEditor.type))
+    note(`已更新 ${userEditor.email}`)
+    userEditor.open = false
+    await loadUsers()
+  } catch (err) {
+    fail(err)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function restoreUser(row) {
+  try {
+    await api.userRestore(row.userId, 1)
+    note(`已恢复 ${row.email}`)
+    await loadUsers()
+  } catch (err) {
+    fail(err)
   }
 }
 
@@ -420,35 +514,78 @@ watch(active, () => {
       <span v-if="error" class="field__error">{{ error }}</span>
     </div>
 
-    <!-- 用户 -->
+        <!-- 用户 -->
     <template v-if="active === 'users'">
       <div class="admin-tools">
         <input v-model="users.email" class="input input--search" type="search" placeholder="按邮箱搜索" @keyup.enter="users.num = 1; loadUsers()" />
+        <select v-model="users.status" class="input input--search" style="max-width: 130px" @change="users.num = 1; loadUsers()">
+          <option :value="-1">全部状态</option>
+          <option :value="0">正常</option>
+          <option :value="1">已禁用</option>
+        </select>
+        <select v-model="users.isDel" class="input input--search" style="max-width: 130px" @change="users.num = 1; loadUsers()">
+          <option :value="0">未删除</option>
+          <option :value="1">已删除</option>
+        </select>
         <button class="btn btn--slim" type="button" @click="users.num = 1; loadUsers()">搜 索</button>
+        <button class="btn btn--slim btn--primary" type="button" @click="openAddUser">添 加 用 户</button>
       </div>
+
       <table class="table">
         <thead><tr><th>邮箱</th><th>名称</th><th>角色</th><th>状态</th><th>已发送</th><th>注册时间</th><th></th></tr></thead>
         <tbody>
           <tr v-for="row in users.list" :key="row.userId">
             <td>{{ row.email }}</td>
             <td>{{ row.name || '—' }}</td>
-            <td>{{ row.type === 0 ? '管理员' : '用户' }}</td>
+            <td>{{ roleName(row.type) }}</td>
             <td><span class="dot" :class="{ 'dot--off': row.status !== 0 }"></span>{{ row.status === 0 ? '正常' : '已禁用' }}</td>
             <td>{{ row.sendCount ?? 0 }}</td>
             <td class="meta">{{ formatDateTime(row.createTime) }}</td>
             <td class="actions">
-              <button class="btn btn--xs" type="button" @click="setUserStatus(row)">{{ row.status === 0 ? '禁用' : '启用' }}</button>
-              <button class="btn btn--xs" type="button" @click="resetSendCount(row)">重置计数</button>
-              <button class="btn btn--xs btn--danger" type="button" @click="removeUser(row)">删除</button>
+              <template v-if="Number(users.isDel) === 1">
+                <button class="btn btn--xs" type="button" @click="restoreUser(row)">恢复</button>
+              </template>
+              <template v-else>
+                <button class="btn btn--xs" type="button" @click="openEditUser(row)">编辑</button>
+                <button class="btn btn--xs" type="button" @click="setUserStatus(row)">{{ row.status === 0 ? '禁用' : '启用' }}</button>
+                <button class="btn btn--xs" type="button" @click="resetSendCount(row)">重置计数</button>
+                <button class="btn btn--xs btn--danger" type="button" @click="removeUser(row)">删除</button>
+              </template>
             </td>
           </tr>
-          <tr v-if="!users.list.length"><td colspan="7" class="empty-hint">没有用户</td></tr>
+          <tr v-if="!users.list.length"><td colspan="7" class="empty-hint">{{ Number(users.isDel) === 1 ? '没有已删除的用户' : '没有用户' }}</td></tr>
         </tbody>
       </table>
+
       <div class="pager">
         <button class="btn btn--xs" type="button" :disabled="users.num <= 1" @click="users.num--; loadUsers()">上一页</button>
         <span class="meta">第 {{ users.num }} 页 · 共 {{ users.total }} 个</span>
         <button class="btn btn--xs" type="button" :disabled="users.list.length < users.size" @click="users.num++; loadUsers()">下一页</button>
+      </div>
+
+      <div v-if="userEditor.open" class="role-editor">
+        <h3 class="settings-subtitle">{{ userEditor.mode === 'add' ? '添加用户' : `编辑 · ${userEditor.email}` }}</h3>
+        <div class="form-grid">
+          <div class="field">
+            <label class="field__label">邮箱地址</label>
+            <input v-model="userEditor.email" class="input" type="email" :readonly="userEditor.mode === 'edit'" placeholder="someone@stsas.top" />
+          </div>
+          <div class="field">
+            <label class="field__label">{{ userEditor.mode === 'add' ? '初始密码（至少 6 位）' : '重置密码（留空不修改）' }}</label>
+            <input v-model="userEditor.password" class="input" type="text" autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label class="field__label">角色</label>
+            <select v-model="userEditor.type" class="input">
+              <option v-for="role in rolesForPicker" :key="role.roleId" :value="role.roleId">{{ role.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="admin-tools" style="margin-top: 14px">
+          <button class="btn btn--enter" type="button" :disabled="busy" @click="saveUser">保 存</button>
+          <button class="btn btn--ghost btn--slim" type="button" @click="closeUserEditor">取 消</button>
+          <span v-if="userEditor.mode === 'edit'" class="meta">改密码会踢掉该用户所有已登录设备</span>
+        </div>
       </div>
     </template>
 
